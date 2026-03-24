@@ -1,0 +1,18 @@
+-- elif / else demo
+
+func judge(x: i64) -> i64:
+  if x < 0:
+    ret -1
+  elif x == 0:
+    ret 0
+  elif x < 10:
+    ret 1
+  else:
+    ret 2
+
+main:
+  print judge(-5)
+  print judge(0)
+  print judge(3)
+  print judge(20)
+  ret 0

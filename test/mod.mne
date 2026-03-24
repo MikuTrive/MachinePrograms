@@ -1,0 +1,22 @@
+-- module + struct demo
+
+struct Pair:
+  a: i64
+  b: i64
+
+module MathBox:
+  func sum_pair(p: Pair) -> i64:
+    ret p.a + p.b
+
+  func mul_pair(p: Pair) -> i64:
+    ret p.a * p.b
+
+main:
+  var p = Pair()
+  p.a = 6
+  p.b = 7
+
+  print MathBox.sum_pair(p)
+  print MathBox.mul_pair(p)
+
+  ret 0

@@ -1,0 +1,16 @@
+-- pointer and memory demo
+
+main:
+  var x: i64 = 10
+  var p: ptr = @x
+
+  print x
+  p^ = 99
+  print x
+
+  var mem: ptr = alloc_bytes(8)
+  store_i64(mem, 12345)
+  print load_i64(mem)
+  free_mem(mem)
+
+  ret 0

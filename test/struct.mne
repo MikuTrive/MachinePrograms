@@ -1,0 +1,46 @@
+-- struct complex logic demo
+
+struct Point:
+  x: i64
+  y: i64
+
+struct Rect:
+  left_top: Point
+  right_bottom: Point
+
+func width(r: Rect) -> i64:
+  ret r.right_bottom.x - r.left_top.x
+
+func height(r: Rect) -> i64:
+  ret r.right_bottom.y - r.left_top.y
+
+func area(r: Rect) -> i64:
+  ret width(r) * height(r)
+
+func move_rect(r: Rect, dx: i64, dy: i64) -> Rect:
+  r.left_top.x = r.left_top.x + dx
+  r.left_top.y = r.left_top.y + dy
+  r.right_bottom.x = r.right_bottom.x + dx
+  r.right_bottom.y = r.right_bottom.y + dy
+  ret r
+
+main:
+  var r = Rect()
+
+  r.left_top.x = 2
+  r.left_top.y = 3
+  r.right_bottom.x = 12
+  r.right_bottom.y = 8
+
+  print width(r)
+  print height(r)
+  print area(r)
+
+  r = move_rect(r, 5, 7)
+
+  print r.left_top.x
+  print r.left_top.y
+  print r.right_bottom.x
+  print r.right_bottom.y
+
+  ret 0

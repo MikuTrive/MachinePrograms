@@ -1,0 +1,14 @@
+main:
+  var xs: list = list_new()
+
+  list_push_back(xs, 11)
+  list_push_back(xs, 22)
+  list_push_back(xs, 33)
+
+  print list_size(xs)
+  print list_get(xs, 0)
+  print list_get(xs, 1)
+  print list_get(xs, 2)
+
+  list_free(xs)
+  ret 0

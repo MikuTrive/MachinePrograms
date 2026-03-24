@@ -1,0 +1,10 @@
+-- simulate for-loop using while
+
+main:
+  var i: i64 = 0
+
+  while i < 6:
+    print i
+    i = i + 1
+
+  ret 0

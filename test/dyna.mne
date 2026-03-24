@@ -1,0 +1,17 @@
+main:
+  var arr: array = array_new()
+
+  array_push(arr, 5)
+  array_push(arr, 10)
+  array_push(arr, 15)
+  array_push(arr, 20)
+
+  print array_len(arr)
+  print array_get(arr, 0)
+  print array_get(arr, 3)
+
+  array_set(arr, 1, 99)
+  print array_get(arr, 1)
+
+  array_free(arr)
+  ret 0
