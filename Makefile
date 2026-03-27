@@ -103,6 +103,7 @@ install: $(BIN) $(RUNTIME_OBJ)
 	install -m 0755 $(BIN) $(BINDIR)/$(BIN)
 	install -m 0644 $(RUNTIME_OBJ) $(LIBDIR)/machine_runtime.o
 	install -m 0644 include/machine_runtime.h $(INCDIR)/machine_runtime.h
+	install -m 0644 $(POINTER_RUNTIME_SRC) $(LIBDIR)/pointer.c
 	install -m 0644 $(POINTER_RUNTIME_SRC) $(LIBDIR)/machine_pointer.c
 	install -m 0644 include/machine_runtime_freestanding.h $(INCDIR)/machine_runtime_freestanding.h
 	install -m 0644 $(FREESTANDING_RUNTIME_SRC) $(LIBDIR)/machine_runtime_freestanding.c
@@ -123,6 +124,7 @@ uninstall:
 	rm -f $(BINDIR)/$(BIN)
 	rm -f $(LIBDIR)/machine_runtime.o
 	rm -f $(INCDIR)/machine_runtime.h
+	rm -f $(LIBDIR)/pointer.c
 	rm -f $(LIBDIR)/machine_pointer.c
 	rm -f $(INCDIR)/machine_runtime_freestanding.h
 	rm -f $(LIBDIR)/machine_runtime_freestanding.c
