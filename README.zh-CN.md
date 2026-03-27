@@ -1,22 +1,34 @@
 # Machine
 
-[README](./README.md) | [Machine](./Machine.md)
+[README](./README.md) | [Machine 中文纵览](./use_order.zh-CN.md)
 
-Machine 是一个用 C17 实现的编译型系统编程语言项目。它不是解释器，也不是“半解释半运行时”的语言实现。当前编译器前端会读取 `.mne` 源码，完成词法分析、语法分析、语义检查，生成 C 代码，然后调用系统 C 编译器生成原生可执行文件。
+Machine 是一个用 C17 实现的编译型系统编程语言项目。当前编译器前端会读取 `.mne` 源码，执行词法分析、语法分析、语义检查，然后根据所选后端生成 C 或 x86_64 汇编，最后再编译或链接成目标程序。
 
-## 编译
+## 快速入口
+
+- [构建与安装](#构建与安装)
+- [编译器用法](#编译器用法)
+- [英文指令说明](./use_order.md)
+- [中文纵览](./use_order.zh-CN.md)
+
+## 构建与安装
 
 ### 依赖
 
-在 Fedora 上：
+在 Fedora/RHEL/CentOS 上：
 
 ```bash
-sudo dnf install gcc make SDL2-devel SDL2_image-devel
+sudo dnf install -y gcc make SDL2-devel SDL2_image-devel nasm
 ```
 
-窗口、图像等运行时功能依赖在构建 runtime 对象时可用的 SDL2/SDL2_image。
+在 Debian/Ubuntu/Kali 上：
+```bash
+sudo apt install -y gcc make libsdl2-dev libsdl2-image-dev nasm
+```
 
-### 编译 Machine 编译器
+窗口、图像等 hosted runtime 功能依赖 SDL2 和 SDL2_image 在构建 hosted runtime 对象时可用。
+
+### 构建编译器
 
 ```bash
 make Compilation
@@ -26,6 +38,7 @@ make Compilation
 
 - `./machine`
 - `build/machine_runtime.o`
+
 
 ### 清理构建产物
 
@@ -39,13 +52,21 @@ make clean
 sudo make install
 ```
 
+现在安装目标会一并安装：
+
+- `machine` 编译器
+- hosted、freestanding、baremetal 三套 runtime 支持文件
+- `.mne` / `.machine` 的 Vim 语法高亮文件
+- 仓库自带的示例 `.mne` 程序
+- 项目文档，包括头部指令说明
+
 ### 卸载
 
 ```bash
 sudo make uninstall
 ```
 
-## 编译器参数与使用方式
+## 编译器用法
 
 ### 查看帮助
 
@@ -68,103 +89,101 @@ sudo make uninstall
 例如：
 
 ```bash
-./machine ceshi/struct.mne -o struct
+./machine test/struct.mne -o struct
 ```
 
-## Machine 是什么类型的语言？
+## Machine 属于什么类型的语言？
 
-Machine 是一个**编译型语言实现**。
+Machine 是一个编译型语言实现。
 
 更准确地说：
 
-- 语言前端由 C17 编写
-- Machine 源码会先编译成生成的 C
-- 生成的 C 再由系统 C 编译器编译
-- 最终得到原生可执行文件
+- 编译器前端由 C17 编写
+- Machine 源码可以降成生成的 C 或 x86_64 汇编
+- 所选后端再被编译或链接成原生产物
+- 根据 target 的不同，最终可以得到普通原生可执行文件或 baremetal ELF
 
-所以 Machine **不是解释型语言**，也**不是半解释半运行时语言**。它当前采用的是**源到源编译 + 原生 C 后端**的实现策略。
+所以 Machine 不是解释器，也不是“半解释半 JIT”的语言实现。
 
-## 目录结构说明
+## `bin.runtime` 自动发现
+
+当源码第一条有效语句是：
+
+```machine
+bin.runtime
+```
+
+编译器会切换到“安装版 / 项目版 runtime 自动发现”模式，并按以下顺序查找：
+
+1. `/usr/local/lib/machine/machine_runtime.o` 与 `/usr/local/include/machine/machine_runtime.h`
+2. `.mne` 文件旁边项目目录中的 `build/` runtime
+3. 项目根目录中的 runtime 副本
+4. 当前工作目录中的回退副本
+
+这样应用项目就不需要把 runtime 文件手工复制到每个目录。
+
+## 当前源码树
 
 ```text
-Machine_project_v17/
-├── Compilation/          # CLI 入口与用户可见命令处理
-├── test/                 # 供 m.sh 使用的测试源码
-├── include/              # 编译器/运行时头文件
-├── src/                  # 编译器与运行时代码
-├── build/                # 生成的 runtime 对象等构建产物
-├── LICENSE               # GPL-3.0 协议文本
-├── Machine.md            # 中英双语教学文档
-├── README.md             # 英文项目总览与构建说明
-├── README.zh-CN.md       # 中文项目总览与构建说明
-└── m.sh                  # test/ 测试辅助脚本
+MachinePrograms/
+├── Compilation/                # CLI 入口与命令处理
+├── include/                    # 公有与内部头文件
+├── src/                        # 编译器与运行时实现
+├── test/                       # 自带示例与测试 .mne 程序
+├── vim/                        # Vim 语法、文件类型检测、ftplugin
+├── build/                      # 生成的 runtime 对象和其他构建产物
+├── LICENSE
+├── README.md
+├── README.zh-CN.md
+├── use_order.md
+├── use_order.zh-CN.md
+├── Makefile
+└── m.sh
 ```
 
-## 功能模块介绍
-
-当前项目主要由这些模块组成：
+## 主要模块
 
 - **lexer**：Machine 源码分词
-- **parser**：表达式、语句、顶层声明、常量表解析
-- **semantic analysis**：符号解析、类型检查、const 检查、容器检查、诊断输出
-- **code generator**：将用户程序生成 C 代码
-- **runtime**：内存、数组、链表、网格、数学、终端、窗口/媒体辅助
-- **CLI**：`machine --help`、`machine --version`、输入输出与最终编译流程
-- **test helper**：`m.sh` 用于自动编译/运行 `ceshi/` 中的测试
+- **parser**：表达式、语句、顶层声明和指令解析
+- **semantic analysis**：符号解析、类型检查与诊断
+- **C backend**：生成 C 代码
+- **x86_64 asm backend**：生成 GNU 风格 x86_64 汇编
+- **runtime 分层**：
+  - `runtime.c` 用于 Linux hosted 程序
+  - `runtime_freestanding.c` 加入口汇编用于 freestanding target
+  - `runtime_baremetal.c` 加入口汇编与链接脚本用于 baremetal target
+- **CLI**：命令行解析、backend/target 选择、最终编译流程
 
-## 源代码规范与仓库约定
+## 缩进规则
 
-当前仓库遵循这些实用规则：
+Machine 同时接受 2 空格和 4 空格块缩进，而且一个文件里不同块可以混用。每深入一层块时，只能比上一层多 2 或 4 个空格；回退时必须回到之前真实出现过的缩进列。
 
-- 编译器/运行时代码以 C17 为基准。
-- 头文件统一放在 `include/`。
-- 编译器/运行时实现文件统一放在 `src/`。
-- CLI 入口文件统一放在 `Compilation/`。
-- 教学或仓库文档统一放在项目根目录。
-- 供脚本测试的 `.mne` 文件统一放在 `ceshi/`。
-- 单个源文件应保持在项目规定的行数上限之下，并在变得难读前及时拆分。
-- 优先使用清晰直接的命名、边界检查和小型辅助函数，不追求晦涩压缩写法。
-- 诊断输出要保持可读、统一。
+## Vim 语法高亮
 
-## 测试脚本
-
-`m.sh` 是项目级测试辅助脚本。
-
-### 显示帮助
+用户本地安装：
 
 ```bash
-./m.sh
+make vim-install
 ```
 
-### 编译并运行 `ceshi/` 中的全部预定义测试
+系统范围安装：`sudo make install` 现在也会把语法文件安装到系统 Vim 运行时目录。
 
-```bash
-./m.sh -c
-```
+## 示例和文档安装位置
 
-### 仅删除测试生成的二进制文件
+执行 `sudo make install` 后，会填充这些目录：
 
-```bash
-./m.sh -d
-```
+- `/usr/local/bin/machine`
+- `/usr/local/lib/machine/`
+- `/usr/local/include/machine/`
+- `/usr/local/share/machine/examples/`
+- `/usr/local/share/doc/machine/`
+- `/usr/local/share/vim/vimfiles/`
 
-它**不会**删除 `./machine` 本身。
 
-### 选择脚本输出语言
+本项目使用了人工智能工具 ChatGPT 5.4
+MikuTrive协助开发了这个Machine编程语言项目。
 
-```bash
-./m.sh -l
-```
 
-目前支持：
+## 许可证
 
-- `en_US`
-- `zh_CN`
-
-## 协议
-
-本开源项目采用 **GPL-3.0** 协议。
-
-本项目包含 **ChatGPT 5.4** 参与。
-
-此项目由 **MikuTrive 与 GPT 共同维护**。
+Machine 使用 GPL-3.0 协议，见 [LICENSE](./LICENSE)。

@@ -22,30 +22,24 @@ LIBDIR := $(PREFIX)/lib/machine
 INCDIR := $(PREFIX)/include/machine
 DOCDIR := $(PREFIX)/share/doc/machine
 EXAMPLESDIR := $(PREFIX)/share/machine/examples
-DOC_FILES := README.md README.zh-CN.md use_order.md use_order.zh-CN.md LICENSE
+SHARE_VIMDIR := $(PREFIX)/share/vim/vimfiles
+MACHINE_VIMDIR := $(PREFIX)/share/machine/vim
+DOC_FILES := README.md README.zh-CN.md use_order.md use_order.zh-CN.md user_order.md user_order.zh-CN.md LICENSE
 EXAMPLE_FILES := $(wildcard test/*.mne)
 
-ifeq ($(strip $(SUDO_USER)),)
-VIM_HOME := $(HOME)
-else
-VIM_HOME := $(shell getent passwd "$(SUDO_USER)" | cut -d: -f6)
-endif
-USER_VIMDIR := $(VIM_HOME)/.vim
-
-.PHONY: help Compilation clean install uninstall test freestanding-demo asm-demo baremetal-demo vim-install vim-uninstall verify
+.PHONY: help Compilation clean install uninstall test freestanding-demo asm-demo baremetal-demo vim-install verify
 
 help:
 	@echo "Machine project build targets"
 	@echo ""
 	@echo "  make Compilation        Build ./machine and precompiled runtime object"
 	@echo "  make test               Build compiler and test all bundled test sources"
-	@echo "  make install            Install compiler, runtimes, docs, examples, and Vim files into the invoking user's ~/.vim"
-	@echo "  make uninstall          Remove installed Machine system files and Vim files from the invoking user's ~/.vim"
+	@echo "  make install            Install compiler, runtimes, Vim files, examples, and docs"
 	@echo "  make freestanding-demo  Build test/lowlevel.mne for freestanding-x86_64"
 	@echo "  make asm-demo           Build test/lowlevel.mne with x86_64-asm backend"
 	@echo "  make baremetal-demo     Build test/baremetal_hello.mne as baremetal ELF"
 	@echo "  make vim-install        Install Vim syntax highlighting into ~/.vim"
-	@echo "  make vim-uninstall      Remove Vim syntax highlighting from ~/.vim"
+	@echo "  make uninstall          Remove installed Machine files"
 	@echo "  make clean              Remove object files and built outputs"
 	@echo ""
 	@echo "Compiler usage:"
@@ -81,17 +75,10 @@ baremetal-demo: $(BIN)
 	./$(BIN) test/baremetal_hello.mne -o test/baremetal_hello.elf --backend x86_64-asm --target baremetal-x86_64 --unsafe
 
 vim-install:
-	install -d $(USER_VIMDIR)/ftdetect $(USER_VIMDIR)/syntax $(USER_VIMDIR)/ftplugin
-	install -m 0644 vim/ftdetect/machine.vim $(USER_VIMDIR)/ftdetect/machine.vim
-	install -m 0644 vim/syntax/machine.vim $(USER_VIMDIR)/syntax/machine.vim
-	install -m 0644 vim/ftplugin/machine.vim $(USER_VIMDIR)/ftplugin/machine.vim
-	@echo "Installed Machine Vim syntax files into $(USER_VIMDIR)"
-
-vim-uninstall:
-	rm -f $(USER_VIMDIR)/ftdetect/machine.vim
-	rm -f $(USER_VIMDIR)/syntax/machine.vim
-	rm -f $(USER_VIMDIR)/ftplugin/machine.vim
-	@echo "Removed Machine Vim syntax files from $(USER_VIMDIR)"
+	install -d $$HOME/.vim/ftdetect $$HOME/.vim/syntax $$HOME/.vim/ftplugin
+	install -m 0644 vim/ftdetect/machine.vim $$HOME/.vim/ftdetect/machine.vim
+	install -m 0644 vim/syntax/machine.vim $$HOME/.vim/syntax/machine.vim
+	install -m 0644 vim/ftplugin/machine.vim $$HOME/.vim/ftplugin/machine.vim
 
 install: $(BIN) $(RUNTIME_OBJ)
 	install -d $(BINDIR)
@@ -99,7 +86,8 @@ install: $(BIN) $(RUNTIME_OBJ)
 	install -d $(INCDIR)
 	install -d $(DOCDIR)
 	install -d $(EXAMPLESDIR)
-	install -d $(USER_VIMDIR)/ftdetect $(USER_VIMDIR)/syntax $(USER_VIMDIR)/ftplugin
+	install -d $(MACHINE_VIMDIR)/ftdetect $(MACHINE_VIMDIR)/syntax $(MACHINE_VIMDIR)/ftplugin
+	install -d $(SHARE_VIMDIR)/ftdetect $(SHARE_VIMDIR)/syntax $(SHARE_VIMDIR)/ftplugin
 	install -m 0755 $(BIN) $(BINDIR)/$(BIN)
 	install -m 0644 $(RUNTIME_OBJ) $(LIBDIR)/machine_runtime.o
 	install -m 0644 include/machine_runtime.h $(INCDIR)/machine_runtime.h
@@ -111,13 +99,15 @@ install: $(BIN) $(RUNTIME_OBJ)
 	install -m 0644 $(BAREMETAL_RUNTIME_SRC) $(LIBDIR)/machine_runtime_baremetal.c
 	install -m 0644 $(BAREMETAL_ENTRY_SRC) $(LIBDIR)/machine_runtime_baremetal_entry.S
 	install -m 0644 $(BAREMETAL_LINKER_SRC) $(LIBDIR)/machine_runtime_baremetal_link.ld
-	install -m 0644 vim/ftdetect/machine.vim $(USER_VIMDIR)/ftdetect/machine.vim
-	install -m 0644 vim/syntax/machine.vim $(USER_VIMDIR)/syntax/machine.vim
-	install -m 0644 vim/ftplugin/machine.vim $(USER_VIMDIR)/ftplugin/machine.vim
+	install -m 0644 vim/ftdetect/machine.vim $(MACHINE_VIMDIR)/ftdetect/machine.vim
+	install -m 0644 vim/syntax/machine.vim $(MACHINE_VIMDIR)/syntax/machine.vim
+	install -m 0644 vim/ftplugin/machine.vim $(MACHINE_VIMDIR)/ftplugin/machine.vim
+	install -m 0644 vim/ftdetect/machine.vim $(SHARE_VIMDIR)/ftdetect/machine.vim
+	install -m 0644 vim/syntax/machine.vim $(SHARE_VIMDIR)/syntax/machine.vim
+	install -m 0644 vim/ftplugin/machine.vim $(SHARE_VIMDIR)/ftplugin/machine.vim
 	install -m 0644 $(DOC_FILES) $(DOCDIR)
 	install -m 0644 $(EXAMPLE_FILES) $(EXAMPLESDIR)
 	@echo "Installed Machine compiler, runtimes, Vim syntax files, examples, and documentation"
-	@echo "Vim files were installed into $(USER_VIMDIR)"
 
 uninstall:
 	rm -f $(BINDIR)/$(BIN)
@@ -131,26 +121,18 @@ uninstall:
 	rm -f $(LIBDIR)/machine_runtime_baremetal.c
 	rm -f $(LIBDIR)/machine_runtime_baremetal_entry.S
 	rm -f $(LIBDIR)/machine_runtime_baremetal_link.ld
-	rm -f $(USER_VIMDIR)/ftdetect/machine.vim $(USER_VIMDIR)/syntax/machine.vim $(USER_VIMDIR)/ftplugin/machine.vim
+	rm -f $(MACHINE_VIMDIR)/ftdetect/machine.vim $(MACHINE_VIMDIR)/syntax/machine.vim $(MACHINE_VIMDIR)/ftplugin/machine.vim
+	rm -f $(SHARE_VIMDIR)/ftdetect/machine.vim $(SHARE_VIMDIR)/syntax/machine.vim $(SHARE_VIMDIR)/ftplugin/machine.vim
 	rm -f $(addprefix $(DOCDIR)/,$(DOC_FILES))
 	rm -f $(addprefix $(EXAMPLESDIR)/,$(notdir $(EXAMPLE_FILES)))
-	@echo "Removed installed Machine system files"
-	@echo "Removed Machine Vim syntax files from $(USER_VIMDIR)"
+	@echo "Removed installed Machine files"
 
 clean:
 	rm -f $(OBJ) $(BIN)
 	rm -rf $(BUILD_DIR)
 
 test: $(BIN) $(RUNTIME_OBJ)
-	@set -e; \
-	for src in test/*.mne; do \
-	  case "$$src" in test/baremetal_hello.mne|test/baremetal_smoke.mne) continue ;; esac; \
-	  out="$${src%.mne}"; \
-	  echo "Testing $$src"; \
-	  ./$(BIN) "$$src" -o "$$out"; \
-	  "./$$out"; \
-	  rm -f "$$out"; \
-	done
+	@set -e; 	for src in test/*.mne; do 	  case "$$src" in test/baremetal_hello.mne|test/baremetal_smoke.mne) continue ;; esac; 	  out="$${src%.mne}"; 	  echo "Testing $$src"; 	  ./$(BIN) "$$src" -o "$$out"; 	  "./$$out"; 	  rm -f "$$out"; 	done
 
 verify: clean Compilation test asm-demo freestanding-demo baremetal-demo
 	@echo "Verification complete: compiler build, tests, asm, freestanding, and baremetal outputs all succeeded without warnings"

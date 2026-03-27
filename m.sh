@@ -16,6 +16,7 @@ TEST_NAMES=(
   "list"
   "mod"
   "elif"
+  "lowlevel"
 )
 
 C_RESET='\033[0m'
@@ -57,7 +58,7 @@ msg() {
       help_l) printf '%s\n' '  -l    Choose output language (zh_CN / en_US).' ;;
       help_h) printf '%s\n' '  -h    Show this help message.' ;;
       missing_machine) printf '%s\n' 'Machine compiler not found: ./machine' ;;
-      missing_examples) printf '%s\n' 'Examples directory not found: ./examples' ;;
+      missing_examples) printf '%s\n' 'Test directory not found: ./test' ;;
       select_title) printf '%s\n' 'Use Up/Down arrow keys, then press Enter to confirm:' ;;
       selected_lang) printf '%s\n' 'Language saved.' ;;
       cleanup_done) printf '%s\n' 'Compiled test binaries removed.' ;;
@@ -82,7 +83,7 @@ msg() {
       help_l) printf '%s\n' '  -l    Choose output language (zh_CN / en_US).' ;;
       help_h) printf '%s\n' '  -h    Show this help message.' ;;
       missing_machine) printf '%s\n' 'Machine compiler not found: ./machine' ;;
-      missing_examples) printf '%s\n' 'Examples directory not found: ./examples' ;;
+      missing_examples) printf '%s\n' 'Test directory not found: ./test' ;;
       select_title) printf '%s\n' 'Use Up/Down arrow keys, then press Enter to confirm:' ;;
       selected_lang) printf '%s\n' 'Language saved.' ;;
       cleanup_done) printf '%s\n' 'Compiled test binaries removed.' ;;

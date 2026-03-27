@@ -1,3 +1,22 @@
+/*
+ * Annotated reading copy of util.c
+ *
+ * What this file is for:
+ * - Provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ *
+ * How to read this file:
+ * - First scan the includes to see which data structures and declarations this unit depends on.
+ * - Then identify the major helper layers: low-level primitives, transformation helpers,
+ *   public entry points, and any error-reporting or cleanup paths.
+ * - Pay attention to stateful objects such as source files, token streams, AST nodes,
+ *   emitted output buffers, runtime data, or target-specific configuration.
+ *
+ * Annotation policy:
+ * - The original code body is preserved.
+ * - Only explanatory comments are added.
+ * - These comments are intended for learning and code-reading, not as a behavioral change.
+ */
+
 #include "util.h"
 
 /*
@@ -12,13 +31,33 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* we implement a set of utility functions for string manipulation, 
-   dynamic memory allocation, list and array management, grid handling,
-   timing, terminal input/output, and window management.
-   these functions provide the core functionality needed for 
-   the runtime environment of our programming language,
-   allowing us to perform common operations such as string duplication, 
-   concatenation, array resizing, grid indexing, timing measurements, and terminal interactions. */
+/* we implement a set of utility functions for string manipulation,
+ *   dynamic memory allocation, list and array management, grid handling,
+ *   timing, terminal input/output, and window management.
+ *   these functions provide the core functionality needed for
+ *   the runtime environment of our programming language,
+ *   allowing us to perform common operations such as string duplication,
+ *   concatenation, array resizing, grid indexing, timing measurements, and terminal interactions. */
+/*
+ * Function overview: read_text_file
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "read text file".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool read_text_file(const char *path, char **buffer, size_t *length)
 {
     FILE *fp = fopen(path, "rb");
@@ -60,11 +99,51 @@ bool read_text_file(const char *path, char **buffer, size_t *length)
     return true;
 }
 
+/*
+ * Function overview: free_text_file
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "free text file".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 void free_text_file(char *buffer)
 {
     free(buffer);
 }
 
+/*
+ * Function overview: copy_cstr
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "copy cstr".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool copy_cstr(char *dst, size_t dst_size, const char *src)
 {
     size_t len;
@@ -81,12 +160,32 @@ bool copy_cstr(char *dst, size_t dst_size, const char *src)
     return true;
 }
 
-/* we implement a function to read the contents of a text file into a 
-   dynamically allocated buffer, along with a function to free that buffer.
-   we also implement functions for copying C strings with size checks, 
-   concatenating strings with separators, checking string suffixes, and changing file extensions.
-   these functions provide essential utilities for 
-   handling file input/output and string manipulation in our programming language. */
+/* we implement a function to read the contents of a text file into a
+ *   dynamically allocated buffer, along with a function to free that buffer.
+ *   we also implement functions for copying C strings with size checks,
+ *   concatenating strings with separators, checking string suffixes, and changing file extensions.
+ *   these functions provide essential utilities for
+ *   handling file input/output and string manipulation in our programming language. */
+/*
+ * Function overview: join_cstr3
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "join cstr3".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool join_cstr3(char *dst, size_t dst_size, const char *left, const char *sep, const char *right)
 {
     size_t left_len;
@@ -109,11 +208,51 @@ bool join_cstr3(char *dst, size_t dst_size, const char *left, const char *sep, c
     return true;
 }
 
+/*
+ * Function overview: append_cstr_suffix
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "append cstr suffix".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool append_cstr_suffix(char *dst, size_t dst_size, const char *base, const char *suffix)
 {
     return join_cstr3(dst, dst_size, base, "", suffix);
 }
 
+/*
+ * Function overview: ends_with
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "ends with".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool ends_with(const char *value, const char *suffix)
 {
     size_t value_len = strlen(value);
@@ -125,6 +264,26 @@ bool ends_with(const char *value, const char *suffix)
     return strcmp(value + value_len - suffix_len, suffix) == 0;
 }
 
+/*
+ * Function overview: path_change_extension
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "path change extension".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 void path_change_extension(const char *input, const char *new_ext, char *output, size_t output_size)
 {
     const char *dot = strrchr(input, '.');
@@ -140,13 +299,86 @@ void path_change_extension(const char *input, const char *new_ext, char *output,
     }
     memcpy(output, input, base_len);
     memcpy(output + base_len, new_ext, strlen(new_ext) + 1);
-    /* we implement a function to join three C strings with a separator, 
-       a function to append a suffix to a base string, a function to check if a 
-       string ends with a given suffix, and a function to change the file extension of a path.
-       these functions provide essential utilities for string manipulation and 
-       file path handling in our programming language. */
+    /* we implement a function to join three C strings with a separator,
+     *       a function to append a suffix to a base string, a function to check if a
+     *       string ends with a given suffix, and a function to change the file extension of a path.
+     *       these functions provide essential utilities for string manipulation and
+     *       file path handling in our programming language. */
 }
 
+/*
+ * Function overview: path_dirname
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "path dirname".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+bool path_dirname(const char *input, char *output, size_t output_size)
+{
+    const char *slash;
+    size_t len;
+    if (!input || !output || output_size == 0)
+    {
+        return false;
+    }
+    slash = strrchr(input, '/');
+    if (!slash)
+    {
+        if (output_size < 2)
+            return false;
+        output[0] = '.';
+        output[1] = '\0';
+        return true;
+    }
+    if (slash == input)
+    {
+        if (output_size < 2)
+            return false;
+        output[0] = '/';
+        output[1] = '\0';
+        return true;
+    }
+    len = (size_t)(slash - input);
+    if (len >= output_size)
+        return false;
+    memcpy(output, input, len);
+    output[len] = '\0';
+    return true;
+}
+
+/*
+ * Function overview: preprocess_machine_source
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "preprocess machine source".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool preprocess_machine_source(const char *input,
                                char **output,
                                int *err_line,
@@ -158,12 +390,12 @@ bool preprocess_machine_source(const char *input,
     {
         return false;
     }
-    /* we implement a preprocessor function to strip Machine line comments (which start with -- and 
-       continue to the end of the line) from the source code.
-       the preprocessor also handles string literals, 
-       ensuring that comment markers inside strings are not treated as actual comments.
-       this allows us to clean the source code before tokenization and parsing, 
-       making it easier to analyze the structure of the program without being affected by comments. */
+    /* we implement a preprocessor function to strip Machine line comments (which start with -- and
+     *       continue to the end of the line) from the source code.
+     *       the preprocessor also handles string literals,
+     *       ensuring that comment markers inside strings are not treated as actual comments.
+     *       this allows us to clean the source code before tokenization and parsing,
+     *       making it easier to analyze the structure of the program without being affected by comments. */
 
     size_t i = 0;
     size_t o = 0;
@@ -223,8 +455,8 @@ bool preprocess_machine_source(const char *input,
             {
                 out[o++] = ' ';
                 ++i;
-                /* we replace comment characters with spaces to preserve line and column information 
-                for error reporting, while effectively removing the comments from the source code. */
+                /* we replace comment characters with spaces to preserve line and column information
+                 *                for error reporting, while effectively removing the comments from the source code. */
             }
             continue;
         }
@@ -241,6 +473,26 @@ bool preprocess_machine_source(const char *input,
     return true;
 }
 
+/*
+ * Function overview: file_exists
+ *
+ * High-level purpose:
+ * - This routine belongs to util.c.
+ * - It exists to provide generic utility helpers for strings, files, memory management, and other reusable compiler support tasks.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "file exists".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool file_exists(const char *path)
 {
     FILE *fp = fopen(path, "rb");

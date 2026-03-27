@@ -1,0 +1,9 @@
+unsafe.enable
+target.baremetal-x86_64
+backend.x86_64-asm
+
+main:
+  unsafe:
+    print "MACHINE_BAREMETAL_SMOKE_OK"
+    print apic_supported()
+  ret 0

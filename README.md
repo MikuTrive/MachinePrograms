@@ -1,22 +1,34 @@
 # Machine
 
-[zh_CN](./README.zh-CN.md) | [Machine](./Machine.md)
+[中文](./README.zh-CN.md) | [Machine](./use_order.md)
 
-Machine is a compiled systems language project implemented in C17. It is not an interpreter, and it is not a mixed interpreter/JIT runtime. The current compiler front-end reads `.mne` source, performs lexical analysis, parsing, semantic checks, generates C code, and then invokes a system C compiler to produce a native executable.
+Machine is a compiled systems language project implemented in C17. The current compiler front-end reads `.mne` source, performs lexical analysis, parsing, semantic checks, and then emits either generated C or x86_64 assembly depending on the selected backend. The generated output is then compiled or linked into the final program.
 
-## Build
+## Quick links
+
+- [Build and install](#build-and-install)
+- [Compiler usage](#compiler-usage)
+- [Directive guide](./use_order.md)
+- [Chinese overview](./README.zh-CN.md)
+
+## Build and install
 
 ### Requirements
 
-On Fedora:
+On Fedora/RHEL/CentOS:
 
 ```bash
-sudo dnf install gcc make SDL2-devel SDL2_image-devel
+sudo dnf install -y gcc make SDL2-devel SDL2_image-devel
 ```
 
-Window, image, and related runtime features depend on SDL2/SDL2_image being available when the runtime object is built.
+On Debian/Ubuntu/Kali：
+```bash
+sudo apt install -y gcc make libsdl2-dev libsdl2-image-dev nasm
+```
 
-### Build the Machine compiler
+Window, image, and related hosted runtime features depend on SDL2 and SDL2_image being available when the hosted runtime object is built.
+
+### Build the compiler
 
 ```bash
 make Compilation
@@ -26,6 +38,7 @@ This produces:
 
 - `./machine`
 - `build/machine_runtime.o`
+
 
 ### Clean build outputs
 
@@ -38,6 +51,14 @@ make clean
 ```bash
 sudo make install
 ```
+
+The install target now installs:
+
+- the `machine` compiler
+- hosted, freestanding, and baremetal runtime support files
+- Vim syntax files for `.mne` / `.machine`
+- bundled example `.mne` programs
+- project documentation, including the directive guide
 
 ### Uninstall
 
@@ -68,103 +89,101 @@ sudo make uninstall
 Example:
 
 ```bash
-./machine ceshi/struct.mne -o struct
+./machine test/struct.mne -o struct
 ```
 
 ## What kind of language is Machine?
 
-Machine is a **compiled language implementation**.
+Machine is a compiled language implementation.
 
 More precisely:
 
-- the language front-end is written in C17
-- Machine source is compiled to generated C
-- the generated C is compiled by the system C compiler
-- the result is a native executable
+- the compiler front-end is written in C17
+- Machine source can be lowered to generated C or x86_64 assembly
+- the selected backend is then compiled or linked into a native output
+- the result is a native executable or baremetal ELF, depending on the selected target
 
-So Machine is **not interpreted**. It is also **not a half-interpreted runtime language**. Its current implementation strategy is **source-to-source compilation with a native C backend**.
+So Machine is not an interpreter, and it is not a mixed interpreter/JIT runtime.
 
-## Directory structure
+## Runtime discovery with `bin.runtime`
+
+When the first meaningful line of a source file is:
+
+```machine
+bin.runtime
+```
+
+the compiler switches runtime discovery into installation/project mode. It will try, in order:
+
+1. `/usr/local/lib/machine/machine_runtime.o` + `/usr/local/include/machine/machine_runtime.h`
+2. a project-local `build/` runtime bundle next to the `.mne` file
+3. a project-local runtime bundle in the project root
+4. current-working-directory fallback copies
+
+This allows application projects to compile without manually copying runtime files into every project directory.
+
+## Current source tree
 
 ```text
-Machine_project_v17/
-├── Compilation/          # CLI entry points and user-facing command handling
-├── test/                 # test-source programs used by m.sh
-├── include/              # public/internal headers used by the compiler/runtime
-├── src/                  # compiler and runtime source code
-├── build/                # generated runtime object and other build outputs
-├── LICENSE               # GPL-3.0 license text
-├── Machine.md            # bilingual language tutorial
-├── README.md             # English project overview and build guide
-├── README.zh-CN.md       # Chinese project overview and build guide
-└── m.sh                  # test helper script for test/
+MachinePrograms/
+├── Compilation/                # CLI entry points and command handling
+├── include/                    # public and internal headers
+├── src/                        # compiler and runtime implementation
+├── test/                       # bundled example and test .mne programs
+├── vim/                        # Vim syntax, ftdetect, and ftplugin files
+├── build/                      # generated runtime object and other build outputs
+├── LICENSE
+├── README.md
+├── README.zh-CN.md
+├── use_order.md
+├── use_order.zh-CN.md
+├── Makefile
+└── m.sh
 ```
 
-## Functional modules
-
-The project is currently organized around these major modules:
+## Major modules
 
 - **lexer**: tokenization of Machine source
-- **parser**: expressions, statements, top-level declarations, tables, and constant literals
-- **semantic analysis**: symbol resolution, type checking, const checks, container checks, diagnostics
-- **code generator**: emits C code for user programs
-- **runtime**: memory helpers, arrays, lists, grids, math helpers, terminal helpers, window/media helpers
-- **CLI**: `machine --help`, `machine --version`, input/output handling, final compilation pipeline
-- **test helper**: `m.sh` automates compile/run/cleanup for files in `ceshi/`
+- **parser**: expressions, statements, top-level declarations, and directives
+- **semantic analysis**: symbol resolution, type checks, and diagnostics
+- **C backend**: emits generated C
+- **x86_64 asm backend**: emits GNU-style x86_64 assembly
+- **runtime layers**:
+  - `runtime.c` for Linux hosted programs
+  - `runtime_freestanding.c` + entry assembly for freestanding targets
+  - `runtime_baremetal.c` + entry assembly + linker script for baremetal targets
+- **CLI**: command-line parsing, backend/target selection, final compilation pipeline
 
-## Source code style and repository conventions
+## Indentation rules
 
-This repository follows these practical rules:
+Machine accepts both 2-space and 4-space block indentation. A file may mix them across different blocks. Each nested block may increase indentation by either 2 or 4 spaces, and dedents must return to a previously established indentation column.
 
-- C17 is the baseline language standard for compiler/runtime code.
-- Header files live under `include/`.
-- Compiler/runtime implementation files live under `src/`.
-- CLI-specific entry files live under `Compilation/`.
-- Teaching or repository documents live in the project root.
-- Test `.mne` files for scripted checks live under `ceshi/`.
-- A single source file should stay comfortably below the project line-count ceiling; split files before they become hard to read.
-- Prefer direct names, shallow helper functions, and explicit boundary checks over compact but unclear code.
-- Keep diagnostics readable and consistent.
+## Vim syntax highlighting
 
-## Test helper script
-
-`m.sh` is the project-level test helper.
-
-### Show help
+For a user-local install:
 
 ```bash
-./m.sh
+make vim-install
 ```
 
-### Compile and run all predefined tests in `ceshi/`
+For a system-wide install, `sudo make install` now also installs the syntax files into a system Vim runtime location.
 
-```bash
-./m.sh -c
-```
+## Example and documentation install layout
 
-### Remove compiled test binaries only
+After `sudo make install`, these locations are populated:
 
-```bash
-./m.sh -d
-```
+- `/usr/local/bin/machine`
+- `/usr/local/lib/machine/`
+- `/usr/local/include/machine/`
+- `/usr/local/share/machine/examples/`
+- `/usr/local/share/doc/machine/`
+- `/usr/local/share/vim/vimfiles/`
 
-This does **not** remove `./machine` itself.
 
-### Choose output language for the script
+This project involved the use of the AI ​​tool ChatGPT 5.4
+MikuTrive assisted in the development of this Machine programming language project.
 
-```bash
-./m.sh -l
-```
-
-The script currently supports:
-
-- `en_US`
-- `zh_CN`
 
 ## License
 
-This open-source project uses the **GPL-3.0** license.
-
-This project includes participation from **ChatGPT 5.4**.
-
-This project is jointly maintained by **MikuTrive and GPT**.
+Machine is distributed under GPL-3.0. See [LICENSE](./LICENSE).

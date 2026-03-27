@@ -1,3 +1,22 @@
+/*
+ * Annotated reading copy of parser_expr.c
+ *
+ * What this file is for:
+ * - Parse expressions, build AST nodes for expression forms, and infer or validate expression-level types.
+ *
+ * How to read this file:
+ * - First scan the includes to see which data structures and declarations this unit depends on.
+ * - Then identify the major helper layers: low-level primitives, transformation helpers,
+ *   public entry points, and any error-reporting or cleanup paths.
+ * - Pay attention to stateful objects such as source files, token streams, AST nodes,
+ *   emitted output buffers, runtime data, or target-specific configuration.
+ *
+ * Annotation policy:
+ * - The original code body is preserved.
+ * - Only explanatory comments are added.
+ * - These comments are intended for learning and code-reading, not as a behavioral change.
+ */
+
 /* Expression parsing and type inference for Machine
  *
  * This file owns:
@@ -15,13 +34,33 @@
 #include <string.h>
 
 const Token *cur(Parser *p) { return &p->tokens->items[p->index]; }
-/* we implement a set of helper functions for the parser, including functions to get 
-   the current and previous tokens, match and expect specific token types, 
-   and skip layout tokens such as newlines and indentation.
-   these functions provide a convenient interface for navigating through the list of 
-   tokens during the parsing process, allowing us to easily check for expected syntax 
-   and handle errors when the syntax does not match our expectations. */
+/* we implement a set of helper functions for the parser, including functions to get
+ *   the current and previous tokens, match and expect specific token types,
+ *   and skip layout tokens such as newlines and indentation.
+ *   these functions provide a convenient interface for navigating through the list of
+ *   tokens during the parsing process, allowing us to easily check for expected syntax
+ *   and handle errors when the syntax does not match our expectations. */
 const Token *prev(Parser *p) { return &p->tokens->items[p->index - 1]; }
+/*
+ * Function overview: match
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_expr.c.
+ * - It exists to parse expressions, build ast nodes for expression forms, and infer or validate expression-level types.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "match".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool match(Parser *p, TokenType t)
 {
     if (cur(p)->type == t)
@@ -31,10 +70,30 @@ bool match(Parser *p, TokenType t)
     }
     return false;
 }
-/* we implement a function to check if the current token matches a specific token type, 
-   and if it does, we advance the parser's index to consume the token.
-   this function is commonly used throughout the parsing process to 
-   check for expected syntax and move through the token stream accordingly. */
+/* we implement a function to check if the current token matches a specific token type,
+ *   and if it does, we advance the parser's index to consume the token.
+ *   this function is commonly used throughout the parsing process to
+ *   check for expected syntax and move through the token stream accordingly. */
+/*
+ * Function overview: expect
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_expr.c.
+ * - It exists to parse expressions, build ast nodes for expression forms, and infer or validate expression-level types.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "expect".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 bool expect(Parser *p, TokenType t, const char *msg)
 {
     if (match(p, t))
@@ -55,6 +114,26 @@ static void skip_layout_tokens(Parser *p)
     }
 }
 
+/*
+ * Function overview: make_type
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_expr.c.
+ * - It exists to parse expressions, build ast nodes for expression forms, and infer or validate expression-level types.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "make type".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 TypeRef make_type(MachineType kind, const char *struct_name)
 {
     TypeRef t;
@@ -67,12 +146,32 @@ TypeRef make_type(MachineType kind, const char *struct_name)
     }
     return t;
 }
-/* we implement a function to create a TypeRef structure, 
-   which represents a type in our programming language.
-   this function takes a MachineType enum value and an optional struct name, 
-   and it initializes the TypeRef structure accordingly.
-   this is a convenient way to create type references throughout the parsing process, 
-   allowing us to easily represent different types such as primitive types, structs, arrays, and more. */
+/* we implement a function to create a TypeRef structure,
+ *   which represents a type in our programming language.
+ *   this function takes a MachineType enum value and an optional struct name,
+ *   and it initializes the TypeRef structure accordingly.
+ *   this is a convenient way to create type references throughout the parsing process,
+ *   allowing us to easily represent different types such as primitive types, structs, arrays, and more. */
+/*
+ * Function overview: type_equals
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_expr.c.
+ * - It exists to parse expressions, build ast nodes for expression forms, and infer or validate expression-level types.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "type equals".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 int type_equals(TypeRef a, TypeRef b)
 {
     return a.kind == b.kind &&
@@ -95,11 +194,11 @@ const char *type_display_name(TypeRef t, char *buf, size_t n)
         return buf;
     }
     if (t.kind == TYPE_ARRAY && buf && n > 0)
-    /* we implement a function to get the display name for a type reference, 
-       which is useful for error messages and debugging.
-       this function takes a TypeRef structure and returns a human-readable string 
-       representation of the type, including handling for struct types and 
-       array types with their dimensions. */
+    /* we implement a function to get the display name for a type reference,
+     *       which is useful for error messages and debugging.
+     *       this function takes a TypeRef structure and returns a human-readable string
+     *       representation of the type, including handling for struct types and
+     *       array types with their dimensions. */
     {
         if (t.array_depth <= 1)
             copy_cstr(buf, n, "array");
@@ -118,17 +217,29 @@ int is_reserved_name(const char *name)
  */
 {
     static const char *reserved[] = {
-        /* we implement a function to check if a given name is reserved in our programming language, 
-           which helps prevent naming conflicts with keywords and built-in functions.
-           this function checks the provided name against a list of 
-           reserved keywords and built-in function names, and it returns true if the 
-           name is reserved, or false otherwise. */
+        /* we implement a function to check if a given name is reserved in our programming language,
+         *           which helps prevent naming conflicts with keywords and built-in functions.
+         *           this function checks the provided name against a list of
+         *           reserved keywords and built-in function names, and it returns true if the
+         *           name is reserved, or false otherwise. */
         "main", "func", "struct", "var", "const", "if", "else", "elif", "while", "print", "ret", "true", "false",
-        "goto", "label", "switch", "case", "default", "module",
+        "goto", "label", "switch", "case", "default", "module", "unsafe",
         "len", "hp", "sqrt", "sin", "cos", "pow",
         "hp_add", "hp_sub", "hp_mul", "hp_div", "hp_sqrt", "hp_pow",
         "alloc_bytes", "free_mem", "store_i64", "load_i64", "store_f64", "load_f64",
-        "store_str", "load_str", "list_new", "list_push_back", "list_get", "list_size", "list_free",
+        "store_str", "load_str", "ptr_from_i64", "ptr_to_i64", "ptr_offset", "ptr_hex", "ptr_bin",
+        "store_u8", "store_u16", "store_u32", "store_u64",
+        "load_u8", "load_u16", "load_u32", "load_u64",
+        "volatile_store_u8", "volatile_store_u16", "volatile_store_u32", "volatile_store_u64",
+        "volatile_load_u8", "volatile_load_u16", "volatile_load_u32", "volatile_load_u64",
+        "syscall0", "syscall1", "syscall2", "syscall3", "syscall4", "syscall5", "syscall6",
+        "mmap_anon", "mmap_anon_exec", "munmap_mem",
+        "fd_open_ro", "fd_open_wo", "fd_open_rw", "fd_close", "fd_read", "fd_write", "fd_seek",
+        "ioctl_i64", "asm_nop", "asm_pause", "asm_mfence", "asm_lfence", "asm_sfence", "asm_rdtsc",
+        "cpu_in8", "cpu_out8",
+        "pmm_alloc_page", "pmm_alloc_pages", "pmm_total_bytes", "pmm_used_bytes",
+        "page_identity_map_2m", "apic_supported", "apic_enable", "apic_eoi",
+        "list_new", "list_push_back", "list_get", "list_size", "list_free",
         "array_new", "array_push", "array_get", "array_set", "array_len", "array_free",
         "grid_new", "grid_get", "grid_set", "grid_rows", "grid_cols", "grid_fill", "grid_free",
         "term_enable_raw", "term_disable_raw", "term_key_available", "term_read_key",
@@ -163,12 +274,12 @@ Expr *new_expr(Parser *p, ExprKind kind, int line, int column)
         return NULL;
     }
     Expr *e = (Expr *)calloc(1, sizeof(Expr));
-    /* we implement a function to create a new expression node for the parser, 
-       which is used to build the abstract syntax tree (AST) during the parsing process.
-       this function takes the parser instance, the kind of expression, 
-       and the line and column numbers for error reporting, and it allocates a new Expr structure, initializes it, 
-       and adds it to the program's expression pool.
-       if the expression pool limit is reached or if memory allocation fails, we report an error to the user. */
+    /* we implement a function to create a new expression node for the parser,
+     *       which is used to build the abstract syntax tree (AST) during the parsing process.
+     *       this function takes the parser instance, the kind of expression,
+     *       and the line and column numbers for error reporting, and it allocates a new Expr structure, initializes it,
+     *       and adds it to the program's expression pool.
+     *       if the expression pool limit is reached or if memory allocation fails, we report an error to the user. */
     if (!e)
     {
         diagnostics_add(p->src, p->errors, line, column, "out of memory while building expression");
@@ -193,11 +304,11 @@ Symbol *find_symbol(Parser *p, const char *name)
     for (size_t i = 0; i < p->symbol_count; ++i)
         if (strcmp(p->symbols[i].name, name) == 0)
             return &p->symbols[i];
-    /* we implement a function to find a symbol in the parser's symbol table, 
-       which is used to resolve variable and function names during the parsing process.
-       this function takes the parser instance and the name of the symbol to find, 
-       and it searches through the symbol table for a matching name, 
-       returning a pointer to the symbol if found, or NULL if the symbol is not found. */
+    /* we implement a function to find a symbol in the parser's symbol table,
+     *       which is used to resolve variable and function names during the parsing process.
+     *       this function takes the parser instance and the name of the symbol to find,
+     *       and it searches through the symbol table for a matching name,
+     *       returning a pointer to the symbol if found, or NULL if the symbol is not found. */
     return NULL;
 }
 FunctionDecl *find_function(Program *program, const char *name)
@@ -211,12 +322,12 @@ FunctionDecl *find_function(Program *program, const char *name)
     for (size_t i = 0; i < program->function_count; ++i)
         if (strcmp(program->functions[i].name, name) == 0)
             return &program->functions[i];
-    /* we implement a function to find a function declaration in the program, 
-       which is used to resolve function names during the parsing process.
-       this function takes the program instance and the name of the function to find, 
-       and it searches through the function list for a matching name, 
-       returning a pointer to the function declaration if found, 
-       or NULL if the function is not found. */
+    /* we implement a function to find a function declaration in the program,
+     *       which is used to resolve function names during the parsing process.
+     *       this function takes the program instance and the name of the function to find,
+     *       and it searches through the function list for a matching name,
+     *       returning a pointer to the function declaration if found,
+     *       or NULL if the function is not found. */
     return NULL;
 }
 StructDecl *find_struct(Program *program, const char *name)
@@ -252,11 +363,11 @@ StructField *find_struct_field(StructDecl *sd, const char *field)
         if (strcmp(sd->fields[i].name, field) == 0)
             return &sd->fields[i];
     return NULL;
-    /* we implement a function to find a field in a struct declaration, 
-       which is used to resolve field names when accessing struct members during the parsing process.
-       this function takes a pointer to the struct declaration and the name of the field to find, 
-       and it searches through the fields of the struct for a matching name, 
-       returning a pointer to the field if found, or NULL if the field is not found. */
+    /* we implement a function to find a field in a struct declaration,
+     *       which is used to resolve field names when accessing struct members during the parsing process.
+     *       this function takes a pointer to the struct declaration and the name of the field to find,
+     *       and it searches through the fields of the struct for a matching name,
+     *       returning a pointer to the field if found, or NULL if the field is not found. */
 }
 
 int add_local(Parser *p, const char *name, TypeRef type, int line)
@@ -272,13 +383,13 @@ int add_local(Parser *p, const char *name, TypeRef type, int line)
     if (is_reserved_name(name))
     {
         diagnostics_add(p->src, p->errors, line, 1, "'%s' is reserved and cannot be used as a variable name", name);
-        /* we implement a function to add a local variable to the parser's symbol table, 
-           which is used to keep track of variable declarations within functions during the parsing process.
-           this function takes the parser instance, the name of the local variable, 
-           its type, and the line number where it is declared, 
-           and it checks if the name is reserved or if it has already been defined in the current scope.
-           if the name is valid and there is room in the symbol table, 
-           it adds a new symbol for the local variable with the provided information. */
+        /* we implement a function to add a local variable to the parser's symbol table,
+         *           which is used to keep track of variable declarations within functions during the parsing process.
+         *           this function takes the parser instance, the name of the local variable,
+         *           its type, and the line number where it is declared,
+         *           and it checks if the name is reserved or if it has already been defined in the current scope.
+         *           if the name is valid and there is room in the symbol table,
+         *           it adds a new symbol for the local variable with the provided information. */
         return 0;
     }
     if (find_symbol(p, name) || find_global(p->program, name))
@@ -349,8 +460,8 @@ int parse_type_ref(Parser *p, TypeRef *out)
         *out = make_type(TYPE_STRUCT, s);
     else
     {
-        /* if the type name does not match any of the known primitive types or struct types, 
-        we report an error to the user indicating that the type is unknown. */
+        /* if the type name does not match any of the known primitive types or struct types,
+         *        we report an error to the user indicating that the type is unknown. */
         diagnostics_add(p->src, p->errors, cur(p)->line, cur(p)->column, "unknown type '%s'", s);
         return 0;
     }
@@ -375,18 +486,18 @@ static Expr *parse_atom(Parser *p)
         {
             e->as.int_value = strtoll(t->lexeme, NULL, 10);
             e->inferred_type = make_type(TYPE_I64, NULL);
-            /* we implement a function to parse an atomic expression, 
-               which is the most basic form of expression in our programming language.
-               this function checks the type of the current token and creates an appropriate expression 
-               node for literals such as numbers, strings, booleans, arrays, and identifiers.
-               for number literals, it distinguishes between integers and floating-point numbers based 
-               on the presence of a decimal point, and it sets the inferred type accordingly.
-               For string literals, it copies the string value and sets the type to string. 
-               For boolean literals, it sets the value and type to boolean. For array literals, it parses the 
-               items in the array and sets the type to array.
-               For identifiers, it creates an identifier expression node with the name of the identifier. 
-               If the token does not match any of these expected types, it reports an error 
-               indicating that an expression was expected. */
+            /* we implement a function to parse an atomic expression,
+             *               which is the most basic form of expression in our programming language.
+             *               this function checks the type of the current token and creates an appropriate expression
+             *               node for literals such as numbers, strings, booleans, arrays, and identifiers.
+             *               for number literals, it distinguishes between integers and floating-point numbers based
+             *               on the presence of a decimal point, and it sets the inferred type accordingly.
+             *               For string literals, it copies the string value and sets the type to string.
+             *               For boolean literals, it sets the value and type to boolean. For array literals, it parses the
+             *               items in the array and sets the type to array.
+             *               For identifiers, it creates an identifier expression node with the name of the identifier.
+             *               If the token does not match any of these expected types, it reports an error
+             *               indicating that an expression was expected. */
         }
         return e;
     }
@@ -416,18 +527,18 @@ static Expr *parse_atom(Parser *p)
             return NULL;
         e->as.bool_value = (t->type == TOKEN_TRUE);
         e->inferred_type = make_type(TYPE_BOOL, NULL);
-        /* we implement a function to parse an atomic expression, 
-           which is the most basic form of expression in our programming language.
-           this function checks the type of the current token and creates an appropriate 
-           expression node for literals such as numbers, strings, booleans, arrays, and identifiers.
-           for number literals, it distinguishes between integers and floating-point 
-           numbers based on the presence of a decimal point, and it sets the inferred type accordingly.
-           For string literals, it copies the string value and sets the type to string. 
-           For boolean literals, it sets the value and type to boolean.
-           For array literals, it parses the items in the array and sets the type to array. 
-           For identifiers, it creates an identifier expression node with the name of the identifier. 
-           If the token does not match any of these expected types,
-           it reports an error indicating that an expression was expected. */
+        /* we implement a function to parse an atomic expression,
+         *           which is the most basic form of expression in our programming language.
+         *           this function checks the type of the current token and creates an appropriate
+         *           expression node for literals such as numbers, strings, booleans, arrays, and identifiers.
+         *           for number literals, it distinguishes between integers and floating-point
+         *           numbers based on the presence of a decimal point, and it sets the inferred type accordingly.
+         *           For string literals, it copies the string value and sets the type to string.
+         *           For boolean literals, it sets the value and type to boolean.
+         *           For array literals, it parses the items in the array and sets the type to array.
+         *           For identifiers, it creates an identifier expression node with the name of the identifier.
+         *           If the token does not match any of these expected types,
+         *           it reports an error indicating that an expression was expected. */
         return e;
     }
     if (match(p, TOKEN_LBRACKET))
@@ -453,13 +564,13 @@ static Expr *parse_atom(Parser *p)
                 }
                 e->as.array.items[e->as.array.item_count++] = parse_expression(p);
                 skip_layout_tokens(p);
-                /* we implement a function to parse an array literal, 
-                   which is a comma-separated list of expressions enclosed in square brackets.
-                   this function creates a new array expression node and then 
-                   enters a loop to parse each item in the array until it reaches the closing square bracket.
-                   it checks for the maximum number of items allowed in the array and reports an error if that limit is exceeded.
-                   after parsing each item, it skips any layout tokens and checks for a comma to separate items, 
-                   or the closing square bracket to end the array literal. */
+                /* we implement a function to parse an array literal,
+                 *                   which is a comma-separated list of expressions enclosed in square brackets.
+                 *                   this function creates a new array expression node and then
+                 *                   enters a loop to parse each item in the array until it reaches the closing square bracket.
+                 *                   it checks for the maximum number of items allowed in the array and reports an error if that limit is exceeded.
+                 *                   after parsing each item, it skips any layout tokens and checks for a comma to separate items,
+                 *                   or the closing square bracket to end the array literal. */
                 if (match(p, TOKEN_RBRACKET))
                 {
                     break;
@@ -479,18 +590,18 @@ static Expr *parse_atom(Parser *p)
     }
     if (match(p, TOKEN_IDENTIFIER))
     {
-        /* we implement a function to parse an atomic expression, 
-           which is the most basic form of expression in our programming language.
-           this function checks the type of the current token and creates an appropriate expression 
-           node for literals such as numbers, strings, booleans, arrays, and identifiers.
-           for number literals, it distinguishes between integers and floating-point 
-           numbers based on the presence of a decimal point, and it sets the inferred type accordingly.
-           For string literals, it copies the string value and sets the type to string. 
-           For boolean literals, it sets the value and type to boolean.
-           For array literals, it parses the items in the array and sets the type to array. 
-           For identifiers, it creates an identifier expression node with the name of the identifier.
-           If the token does not match any of these expected types, 
-           it reports an error indicating that an expression was expected. */
+        /* we implement a function to parse an atomic expression,
+         *           which is the most basic form of expression in our programming language.
+         *           this function checks the type of the current token and creates an appropriate expression
+         *           node for literals such as numbers, strings, booleans, arrays, and identifiers.
+         *           for number literals, it distinguishes between integers and floating-point
+         *           numbers based on the presence of a decimal point, and it sets the inferred type accordingly.
+         *           For string literals, it copies the string value and sets the type to string.
+         *           For boolean literals, it sets the value and type to boolean.
+         *           For array literals, it parses the items in the array and sets the type to array.
+         *           For identifiers, it creates an identifier expression node with the name of the identifier.
+         *           If the token does not match any of these expected types,
+         *           it reports an error indicating that an expression was expected. */
         Expr *e = new_expr(p, EXPR_IDENTIFIER, t->line, t->column);
         if (!e)
             return NULL;
@@ -513,14 +624,14 @@ static Expr *parse_atom(Parser *p)
 
 static Expr *parse_primary(Parser *p)
 {
-    /* we implement a function to parse a primary expression, which is the base 
-       case for parsing more complex expressions in our programming language.
-       this function starts by parsing an atomic expression using the parse_atom function, 
-       and then it enters a loop to handle postfix operations such as function calls, array indexing, 
-       field access, and pointer dereferencing.
-       for each of these operations, it creates a new expression node that represents the 
-       operation and updates the current expression to be the result of that operation, 
-       allowing for chaining of multiple postfix operations in a single expression. */
+    /* we implement a function to parse a primary expression, which is the base
+     *       case for parsing more complex expressions in our programming language.
+     *       this function starts by parsing an atomic expression using the parse_atom function,
+     *       and then it enters a loop to handle postfix operations such as function calls, array indexing,
+     *       field access, and pointer dereferencing.
+     *       for each of these operations, it creates a new expression node that represents the
+     *       operation and updates the current expression to be the result of that operation,
+     *       allowing for chaining of multiple postfix operations in a single expression. */
     Expr *e = parse_atom(p);
     if (!e)
         return NULL;
@@ -589,13 +700,13 @@ static Expr *parse_primary(Parser *p)
     return e;
 }
 
-/* we implement a function to parse a unary expression, 
-   which is an expression that consists of a single operand with a unary operator applied to it.
-   this function checks for the presence of unary operators such as negation or pointer dereferencing, 
-   and if it finds one, it creates a new expression node that represents the unary 
-   operation and recursively calls itself to parse the operand of the unary operator.
-   if no unary operator is found, it falls back to parsing a primary expression, 
-   which is the base case for more complex expressions. */
+/* we implement a function to parse a unary expression,
+ *   which is an expression that consists of a single operand with a unary operator applied to it.
+ *   this function checks for the presence of unary operators such as negation or pointer dereferencing,
+ *   and if it finds one, it creates a new expression node that represents the unary
+ *   operation and recursively calls itself to parse the operand of the unary operator.
+ *   if no unary operator is found, it falls back to parsing a primary expression,
+ *   which is the base case for more complex expressions. */
 static Expr *parse_unary(Parser *p)
 {
     const Token *t = cur(p);
@@ -639,28 +750,28 @@ static Expr *parse_add(Parser *p)
         left = e;
     }
     return left;
-    /* we implement functions to parse binary expressions with different levels of operator precedence, 
-       such as multiplication and division for the highest precedence, 
-       followed by addition and subtraction, and then comparison operators.
-       each of these functions follows a similar pattern: it starts by parsing the 
-       left-hand side of the expression using the next level of precedence, and then it 
-       enters a loop to check for the presence of the relevant operators.
-       if it finds an operator, it creates a new expression node for the binary operation, 
-       parses the right-hand side of the expression, 
-       and updates the left-hand side to be the result of the binary operation, 
-       allowing for chaining of multiple binary operations with the same precedence level. */
+    /* we implement functions to parse binary expressions with different levels of operator precedence,
+     *       such as multiplication and division for the highest precedence,
+     *       followed by addition and subtraction, and then comparison operators.
+     *       each of these functions follows a similar pattern: it starts by parsing the
+     *       left-hand side of the expression using the next level of precedence, and then it
+     *       enters a loop to check for the presence of the relevant operators.
+     *       if it finds an operator, it creates a new expression node for the binary operation,
+     *       parses the right-hand side of the expression,
+     *       and updates the left-hand side to be the result of the binary operation,
+     *       allowing for chaining of multiple binary operations with the same precedence level. */
 }
 static Expr *parse_compare(Parser *p)
 {
     Expr *left = parse_add(p);
     while (cur(p)->type == TOKEN_EQEQ || cur(p)->type == TOKEN_NEQ || cur(p)->type == TOKEN_LT || cur(p)->type == TOKEN_GT || cur(p)->type == TOKEN_LE || cur(p)->type == TOKEN_GE)
     {
-        /* we implement a function to parse comparison expressions, 
-           which are binary expressions that compare two values using operators such as equality, 
-           inequality, less than, greater than, and so on.
-           this function starts by parsing the left-hand side of the expression using the 
-           next level of precedence (addition and subtraction), and then it enters a loop to check 
-           for the presence of comparison operators. */
+        /* we implement a function to parse comparison expressions,
+         *           which are binary expressions that compare two values using operators such as equality,
+         *           inequality, less than, greater than, and so on.
+         *           this function starts by parsing the left-hand side of the expression using the
+         *           next level of precedence (addition and subtraction), and then it enters a loop to check
+         *           for the presence of comparison operators. */
         const Token *op = cur(p);
         ++p->index;
         Expr *right = parse_add(p);
@@ -673,6 +784,48 @@ static Expr *parse_compare(Parser *p)
     return left;
 }
 Expr *parse_expression(Parser *p) { return parse_compare(p); }
+
+/*
+ * Function overview: is_unsafe_builtin_name
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_expr.c.
+ * - It exists to parse expressions, build ast nodes for expression forms, and infer or validate expression-level types.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "is unsafe builtin name".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+int is_unsafe_builtin_name(const char *name)
+{
+    static const char *unsafe_builtins[] = {
+        "ptr_from_i64", "ptr_to_i64", "ptr_offset", "ptr_hex", "ptr_bin",
+        "store_u8", "store_u16", "store_u32", "store_u64",
+        "load_u8", "load_u16", "load_u32", "load_u64",
+        "volatile_store_u8", "volatile_store_u16", "volatile_store_u32", "volatile_store_u64",
+        "volatile_load_u8", "volatile_load_u16", "volatile_load_u32", "volatile_load_u64",
+        "syscall0", "syscall1", "syscall2", "syscall3", "syscall4", "syscall5", "syscall6",
+        "mmap_anon", "mmap_anon_exec", "munmap_mem",
+        "fd_open_ro", "fd_open_wo", "fd_open_rw", "fd_close", "fd_read", "fd_write", "fd_seek",
+        "ioctl_i64", "asm_nop", "asm_pause", "asm_mfence", "asm_lfence", "asm_sfence", "asm_rdtsc",
+        "cpu_in8", "cpu_out8",
+        "pmm_alloc_page", "pmm_alloc_pages", "pmm_total_bytes", "pmm_used_bytes",
+        "page_identity_map_2m", "apic_supported", "apic_enable", "apic_eoi",
+        NULL};
+    for (size_t i = 0; unsafe_builtins[i]; ++i)
+        if (strcmp(name, unsafe_builtins[i]) == 0)
+            return 1;
+    return 0;
+}
 
 static TypeRef infer_call(Parser *p, Expr *e)
 /**
@@ -695,6 +848,13 @@ static TypeRef infer_call(Parser *p, Expr *e)
      */
     {
         const char *name = e->as.call.callee->as.text;
+        if (is_unsafe_builtin_name(name))
+        {
+            if (!p->allow_unsafe)
+                diagnostics_add(p->src, p->errors, e->line, e->column, "unsafe builtin '%s' requires unsafe.enable or --unsafe", name);
+            else if (p->unsafe_depth <= 0)
+                diagnostics_add(p->src, p->errors, e->line, e->column, "unsafe builtin '%s' must appear inside an unsafe: block", name);
+        }
         if (find_struct(p->program, name))
         {
             if (e->as.call.arg_count != 0)
@@ -709,15 +869,15 @@ static TypeRef infer_call(Parser *p, Expr *e)
             return e->inferred_type = make_type(TYPE_F64, NULL);
         if (strncmp(name, "hp_", 3) == 0)
             return e->inferred_type = make_type(TYPE_HP, NULL);
-        if (strcmp(name, "alloc_bytes") == 0 || strcmp(name, "addr") == 0)
+        if (strcmp(name, "alloc_bytes") == 0 || strcmp(name, "addr") == 0 || strcmp(name, "ptr_from_i64") == 0 || strcmp(name, "ptr_offset") == 0 || strcmp(name, "mmap_anon") == 0 || strcmp(name, "mmap_anon_exec") == 0 || strcmp(name, "pmm_alloc_page") == 0 || strcmp(name, "pmm_alloc_pages") == 0)
             return e->inferred_type = make_type(TYPE_PTR, NULL);
-        if (strcmp(name, "free_mem") == 0 || strcmp(name, "store_i64") == 0 || strcmp(name, "store_f64") == 0 || strcmp(name, "store_str") == 0 || strcmp(name, "list_push_back") == 0 || strcmp(name, "list_free") == 0 || strcmp(name, "array_push") == 0 || strcmp(name, "array_set") == 0 || strcmp(name, "array_free") == 0)
+        if (strcmp(name, "free_mem") == 0 || strcmp(name, "store_i64") == 0 || strcmp(name, "store_f64") == 0 || strcmp(name, "store_str") == 0 || strcmp(name, "store_u8") == 0 || strcmp(name, "store_u16") == 0 || strcmp(name, "store_u32") == 0 || strcmp(name, "store_u64") == 0 || strcmp(name, "volatile_store_u8") == 0 || strcmp(name, "volatile_store_u16") == 0 || strcmp(name, "volatile_store_u32") == 0 || strcmp(name, "volatile_store_u64") == 0 || strcmp(name, "list_push_back") == 0 || strcmp(name, "list_free") == 0 || strcmp(name, "array_push") == 0 || strcmp(name, "array_set") == 0 || strcmp(name, "array_free") == 0 || strcmp(name, "asm_nop") == 0 || strcmp(name, "asm_pause") == 0 || strcmp(name, "asm_mfence") == 0 || strcmp(name, "asm_lfence") == 0 || strcmp(name, "asm_sfence") == 0 || strcmp(name, "cpu_out8") == 0 || strcmp(name, "apic_eoi") == 0)
             return e->inferred_type = make_type(TYPE_VOID, NULL);
-        if (strcmp(name, "load_i64") == 0)
+        if (strcmp(name, "load_i64") == 0 || strcmp(name, "load_u8") == 0 || strcmp(name, "load_u16") == 0 || strcmp(name, "load_u32") == 0 || strcmp(name, "load_u64") == 0 || strcmp(name, "volatile_load_u8") == 0 || strcmp(name, "volatile_load_u16") == 0 || strcmp(name, "volatile_load_u32") == 0 || strcmp(name, "volatile_load_u64") == 0 || strcmp(name, "ptr_to_i64") == 0 || strcmp(name, "syscall0") == 0 || strcmp(name, "syscall1") == 0 || strcmp(name, "syscall2") == 0 || strcmp(name, "syscall3") == 0 || strcmp(name, "syscall4") == 0 || strcmp(name, "syscall5") == 0 || strcmp(name, "syscall6") == 0 || strcmp(name, "munmap_mem") == 0 || strcmp(name, "fd_open_ro") == 0 || strcmp(name, "fd_open_wo") == 0 || strcmp(name, "fd_open_rw") == 0 || strcmp(name, "fd_close") == 0 || strcmp(name, "fd_read") == 0 || strcmp(name, "fd_write") == 0 || strcmp(name, "fd_seek") == 0 || strcmp(name, "ioctl_i64") == 0 || strcmp(name, "asm_rdtsc") == 0 || strcmp(name, "cpu_in8") == 0 || strcmp(name, "pmm_total_bytes") == 0 || strcmp(name, "pmm_used_bytes") == 0 || strcmp(name, "page_identity_map_2m") == 0)
             return e->inferred_type = make_type(TYPE_I64, NULL);
         if (strcmp(name, "load_f64") == 0)
             return e->inferred_type = make_type(TYPE_F64, NULL);
-        if (strcmp(name, "load_str") == 0)
+        if (strcmp(name, "load_str") == 0 || strcmp(name, "ptr_hex") == 0 || strcmp(name, "ptr_bin") == 0)
             return e->inferred_type = make_type(TYPE_STR, NULL);
         if (strcmp(name, "list_new") == 0)
             return e->inferred_type = make_type(TYPE_LIST, NULL);
@@ -735,7 +895,7 @@ static TypeRef infer_call(Parser *p, Expr *e)
             return e->inferred_type = make_type(TYPE_BOOL, NULL);
         if (strcmp(name, "term_read_key") == 0 || strcmp(name, "term_poll_event") == 0 || strcmp(name, "term_last_key") == 0 || strcmp(name, "term_mouse_x") == 0 || strcmp(name, "term_mouse_y") == 0 || strcmp(name, "term_mouse_button") == 0 || strcmp(name, "tick_ms") == 0 || strcmp(name, "timer_elapsed_ms") == 0 || strcmp(name, "win_poll_event") == 0 || strcmp(name, "win_last_key") == 0 || strcmp(name, "win_mouse_x") == 0 || strcmp(name, "win_mouse_y") == 0 || strcmp(name, "win_mouse_button") == 0 || strcmp(name, "image_width") == 0 || strcmp(name, "image_height") == 0 || strcmp(name, "video_play") == 0)
             return e->inferred_type = make_type(TYPE_I64, NULL);
-        if (strcmp(name, "term_key_available") == 0 || strcmp(name, "win_create") == 0 || strcmp(name, "win_is_open") == 0 || strcmp(name, "video_is_running") == 0)
+        if (strcmp(name, "term_key_available") == 0 || strcmp(name, "win_create") == 0 || strcmp(name, "win_is_open") == 0 || strcmp(name, "video_is_running") == 0 || strcmp(name, "apic_supported") == 0 || strcmp(name, "apic_enable") == 0)
             return e->inferred_type = make_type(TYPE_BOOL, NULL);
         if (strcmp(name, "image_load") == 0)
             return e->inferred_type = make_type(TYPE_PTR, NULL);
@@ -746,12 +906,12 @@ static TypeRef infer_call(Parser *p, Expr *e)
         FunctionDecl *f = find_function(p->program, name);
 
         /* if the function name matches one of the built-in functions or
-           struct constructors, we return the appropriate type for that function call.
-           if the function name does not match any known built-in functions,
-           we look it up in the program's function list to see if it is a user-defined function,
-           and if found, we mark it as used and return its return type as the inferred type of the function call.
-           if the function is not found in either the built-in list or the user-defined list,
-           we report an error indicating that the function is unknown and return an invalid type. */
+         *           struct constructors, we return the appropriate type for that function call.
+         *           if the function name does not match any known built-in functions,
+         *           we look it up in the program's function list to see if it is a user-defined function,
+         *           and if found, we mark it as used and return its return type as the inferred type of the function call.
+         *           if the function is not found in either the built-in list or the user-defined list,
+         *           we report an error indicating that the function is unknown and return an invalid type. */
         if (f)
         {
             f->used = true;
@@ -759,8 +919,8 @@ static TypeRef infer_call(Parser *p, Expr *e)
         }
         diagnostics_add(p->src, p->errors, e->line, e->column, "unknown function '%s'", name);
         /* if the function name does not match any known built-in functions or
-           user-defined functions, we report an error indicating that the
-           function is unknown and return an invalid type. */
+         *           user-defined functions, we report an error indicating that the
+         *           function is unknown and return an invalid type. */
         return e->inferred_type = make_type(TYPE_INVALID, NULL);
     }
 
@@ -792,10 +952,10 @@ static TypeRef infer_call(Parser *p, Expr *e)
         }
         f->used = true;
         /* if the function call is of the form module.function,
-           we check if the module exists and then look for the function
-           within that module by constructing a qualified name.
-           if the module or function is not found, we report an error. If found,
-           we mark the function as used and return its return type as the inferred type of the function call. */
+         *           we check if the module exists and then look for the function
+         *           within that module by constructing a qualified name.
+         *           if the module or function is not found, we report an error. If found,
+         *           we mark the function as used and return its return type as the inferred type of the function call. */
         return e->inferred_type = f->return_type;
     }
 
@@ -803,6 +963,26 @@ static TypeRef infer_call(Parser *p, Expr *e)
     return e->inferred_type = make_type(TYPE_INVALID, NULL);
 }
 
+/*
+ * Function overview: infer_expr
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_expr.c.
+ * - It exists to parse expressions, build ast nodes for expression forms, and infer or validate expression-level types.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "infer expr".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 TypeRef infer_expr(Parser *p, Expr *e)
 {
     char buf1[128], buf2[128];
@@ -829,13 +1009,13 @@ TypeRef infer_expr(Parser *p, Expr *e)
             copy_cstr(e->struct_name, sizeof(e->struct_name), sym->type.struct_name);
             return e->inferred_type = sym->type;
             /* if the expression is an identifier, we look it up in the current symbol table to
-               see if it is a local variable, and if found, we mark it as used and return
-               its type as the inferred type of the expression.
-               if the identifier is not found in the local symbol table,
-               we then look it up in the global variable list to see if it is a global variable,
-               and if found, we mark it as used and return its declared type as the inferred type of the expression.
-               if the identifier is not found in either the local symbol table or the global variable list,
-               we report an error indicating that the symbol is undeclared and return an invalid type. */
+             *               see if it is a local variable, and if found, we mark it as used and return
+             *               its type as the inferred type of the expression.
+             *               if the identifier is not found in the local symbol table,
+             *               we then look it up in the global variable list to see if it is a global variable,
+             *               and if found, we mark it as used and return its declared type as the inferred type of the expression.
+             *               if the identifier is not found in either the local symbol table or the global variable list,
+             *               we report an error indicating that the symbol is undeclared and return an invalid type. */
         }
         GlobalVarDecl *g = find_global(p->program, e->as.text);
         if (g)
@@ -863,14 +1043,14 @@ TypeRef infer_expr(Parser *p, Expr *e)
             return e->inferred_type = make_type(TYPE_I64, NULL);
         return e->inferred_type = make_type(TYPE_INVALID, NULL);
         /* if the expression is a unary operation, we first infer the type of
-           the operand, and then we check the operator to determine the resulting type of the expression.
-           for example, if the operator is negation ('-'), we check if
-           the operand is a numeric type (i64, f64, or hp) and return that type as the inferred type of
-           the expression; if the operator is pointer dereference ('@'),
-           we return a pointer type; if the operator is some other unary operator (e.g., '^'),
-           we return an appropriate type based on what that operator is defined to do.
-           if the operator does not match any known unary operators or if the
-           operand type is not compatible with the operator, we report an error and return an invalid type. */
+         *           the operand, and then we check the operator to determine the resulting type of the expression.
+         *           for example, if the operator is negation ('-'), we check if
+         *           the operand is a numeric type (i64, f64, or hp) and return that type as the inferred type of
+         *           the expression; if the operator is pointer dereference ('@'),
+         *           we return a pointer type; if the operator is some other unary operator (e.g., '^'),
+         *           we return an appropriate type based on what that operator is defined to do.
+         *           if the operator does not match any known unary operators or if the
+         *           operand type is not compatible with the operator, we report an error and return an invalid type. */
     }
     case EXPR_INDEX:
     {
@@ -880,19 +1060,19 @@ TypeRef infer_expr(Parser *p, Expr *e)
         {
             diagnostics_add(p->src, p->errors, e->line, e->column, "index must be i64, got %s", type_display_name(idx, buf1, sizeof(buf1)));
             /* if the expression is an index operation (e.g., array indexing),
-               we first infer the types of the base expression and the index expression.
-               we check if the index expression is of type i64, since indexing typically
-               requires an integer index. If the index type is not i64, we report an error and return an invalid type.
-               if the index type is valid, we then check the type of the base expression to
-               determine what kind of indexing is being performed. If the base type is a string,
-               we return string as the inferred type; if the base type is a list,
-               we return i64 as the inferred type (assuming lists are indexed to
-               produce i64 values); if the base type is an array,
-               we check the array depth to determine the resulting type of the
-               indexing operation (e.g., if it's a one-dimensional array, we return i64; if it's a multi-dimensional array,
-               we return an array type with one less dimension).
-               If the base type is not one of the supported indexable types,
-               we report an error and return an invalid type. */
+             *               we first infer the types of the base expression and the index expression.
+             *               we check if the index expression is of type i64, since indexing typically
+             *               requires an integer index. If the index type is not i64, we report an error and return an invalid type.
+             *               if the index type is valid, we then check the type of the base expression to
+             *               determine what kind of indexing is being performed. If the base type is a string,
+             *               we return string as the inferred type; if the base type is a list,
+             *               we return i64 as the inferred type (assuming lists are indexed to
+             *               produce i64 values); if the base type is an array,
+             *               we check the array depth to determine the resulting type of the
+             *               indexing operation (e.g., if it's a one-dimensional array, we return i64; if it's a multi-dimensional array,
+             *               we return an array type with one less dimension).
+             *               If the base type is not one of the supported indexable types,
+             *               we report an error and return an invalid type. */
             return e->inferred_type = make_type(TYPE_INVALID, NULL);
         }
         if (base.kind == TYPE_STR)
@@ -928,13 +1108,13 @@ TypeRef infer_expr(Parser *p, Expr *e)
                 return e->inferred_type = make_type(TYPE_INVALID, NULL);
             }
             /* if the expression is a field access (e.g., struct field access),
-               we first infer the type of the base expression, and then we check if the base type is a struct.
-               if the base type is not a struct, we report an error and return an invalid type,
-               since field access is only valid on struct types. If the base type is a struct,
-               we then look up the struct definition to find the field being accessed, and if the field is found,
-               we return the type of that field as the inferred type of the field access expression.
-               If the field is not found in the struct definition, we report an error indicating that the
-               struct does not have the specified field and return an invalid type. */
+             *               we first infer the type of the base expression, and then we check if the base type is a struct.
+             *               if the base type is not a struct, we report an error and return an invalid type,
+             *               since field access is only valid on struct types. If the base type is a struct,
+             *               we then look up the struct definition to find the field being accessed, and if the field is found,
+             *               we return the type of that field as the inferred type of the field access expression.
+             *               If the field is not found in the struct definition, we report an error indicating that the
+             *               struct does not have the specified field and return an invalid type. */
             StructDecl *sd = find_struct(p->program, base.struct_name);
             StructField *fd = sd ? find_struct_field(sd, e->as.field.field) : NULL;
             if (!fd)

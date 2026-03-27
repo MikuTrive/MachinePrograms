@@ -1,8 +1,36 @@
+/*
+ * Annotated reading edition of lexer.h
+ *
+ * This file keeps the original code intact and only adds explanatory comments.
+ * The goal of this edition is to explain the role of the header, the meaning of its
+ * declarations, and how it fits into the Machine compiler / runtime architecture.
+ */
+
+/*
+ * Header guard / one-time inclusion control.
+ *
+ * This prevents duplicate declarations when the same header is included multiple times.
+ */
 #ifndef MACHINE_LEXER_H
+/*
+ * Header guard / one-time inclusion control.
+ *
+ * This prevents duplicate declarations when the same header is included multiple times.
+ */
 #define MACHINE_LEXER_H
 
+/*
+ * Dependency include.
+ *
+ * This brings in declarations required by the current header.
+ */
 #include "common.h"
 
+/*
+ * Enumeration declaration.
+ *
+ * Enums usually define token kinds, AST node categories, type tags, or other fixed symbolic values.
+ */
 typedef enum
 {
     TOKEN_EOF,
@@ -31,6 +59,7 @@ typedef enum
     TOKEN_SWITCH,
     TOKEN_CASE,
     TOKEN_DEFAULT,
+    TOKEN_UNSAFE,
     TOKEN_ARROW,
     TOKEN_LPAREN,
     TOKEN_RPAREN,
@@ -54,6 +83,11 @@ typedef enum
     TOKEN_GE
 } TokenType;
 
+/*
+ * Structure declaration.
+ *
+ * Structures in this project carry parser state, token records, AST nodes, type information, or runtime-facing data.
+ */
 typedef struct
 {
     TokenType type;
@@ -62,6 +96,11 @@ typedef struct
     int column;
 } Token;
 
+/*
+ * Structure declaration.
+ *
+ * Structures in this project carry parser state, token records, AST nodes, type information, or runtime-facing data.
+ */
 typedef struct
 {
     Token items[MACHINE_MAX_TOKENS];
@@ -69,7 +108,22 @@ typedef struct
     int indent_width;
 } TokenList;
 
+/*
+ * Function declaration.
+ *
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
+ */
 bool lex_source(const SourceFile *source, TokenList *tokens, DiagnosticList *errors);
+/*
+ * Function declaration.
+ *
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
+ */
 const char *token_type_name(TokenType type);
 
+/*
+ * Preprocessor directive.
+ *
+ * Directives here usually define compile-time constants, feature switches, or version identifiers.
+ */
 #endif

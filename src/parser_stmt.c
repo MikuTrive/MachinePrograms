@@ -1,3 +1,22 @@
+/*
+ * Annotated reading copy of parser_stmt.c
+ *
+ * What this file is for:
+ * - Parse statements, declarations, control-flow constructs, and higher-level program structure.
+ *
+ * How to read this file:
+ * - First scan the includes to see which data structures and declarations this unit depends on.
+ * - Then identify the major helper layers: low-level primitives, transformation helpers,
+ *   public entry points, and any error-reporting or cleanup paths.
+ * - Pay attention to stateful objects such as source files, token streams, AST nodes,
+ *   emitted output buffers, runtime data, or target-specific configuration.
+ *
+ * Annotation policy:
+ * - The original code body is preserved.
+ * - Only explanatory comments are added.
+ * - These comments are intended for learning and code-reading, not as a behavioral change.
+ */
+
 /* Statement parsing and top-level program assembly for Machine
  *
  * This file owns:
@@ -23,11 +42,11 @@ static Statement *alloc_block(Parser *p, size_t count)
  */
 {
     /* we implement a function to allocate a block of statements for the parser.
-       this function takes care of memory management for statement blocks, 
-       ensuring that they are properly allocated and tracked within the program structure.
-       by centralizing block allocation in this function, 
-       we can easily handle memory errors and maintain a consistent 
-       approach to managing statement blocks throughout the parsing process. */
+     *       this function takes care of memory management for statement blocks,
+     *       ensuring that they are properly allocated and tracked within the program structure.
+     *       by centralizing block allocation in this function,
+     *       we can easily handle memory errors and maintain a consistent
+     *       approach to managing statement blocks throughout the parsing process. */
     Statement *block = (Statement *)calloc(count ? count : 1, sizeof(Statement));
     if (!block)
     {
@@ -46,11 +65,11 @@ static SwitchCase *alloc_switch_cases(Parser *p, size_t count)
         diagnostics_add(p->src, p->errors, cur(p)->line, cur(p)->column, "out of memory while building switch cases");
         return NULL;
         /* we implement a function to allocate a block of switch cases for the parser.
-           this function is responsible for managing memory allocation for switch cases, 
-           ensuring that they are properly tracked within the program structure.
-           by centralizing switch case allocation in this function, 
-           we can handle memory errors effectively and maintain a consistent 
-           approach to managing switch cases throughout the parsing process. */
+         *           this function is responsible for managing memory allocation for switch cases,
+         *           ensuring that they are properly tracked within the program structure.
+         *           by centralizing switch case allocation in this function,
+         *           we can handle memory errors effectively and maintain a consistent
+         *           approach to managing switch cases throughout the parsing process. */
     }
     p->program->switch_case_blocks[p->program->switch_case_block_count++] = cases;
     return cases;
@@ -64,12 +83,12 @@ static int type_is_assignable(TypeRef dst, TypeRef src)
  * @return 1 if the assignment is valid, 0 otherwise.
  */
 {
-    /* we implement a function to check if one type can be assigned to 
-       another in our programming language.
-       this function takes into account the rules of type compatibility, 
-       including implicit conversions and type hierarchies, to determine if an assignment is valid.
-       by centralizing this logic in a single function, we can ensure consistent 
-       type checking throughout the parser and provide clear error messages when type mismatches occur. */
+    /* we implement a function to check if one type can be assigned to
+     *       another in our programming language.
+     *       this function takes into account the rules of type compatibility,
+     *       including implicit conversions and type hierarchies, to determine if an assignment is valid.
+     *       by centralizing this logic in a single function, we can ensure consistent
+     *       type checking throughout the parser and provide clear error messages when type mismatches occur. */
     if (type_equals(dst, src))
         return 1;
     if (dst.kind == TYPE_HP && (src.kind == TYPE_F64 || src.kind == TYPE_I64))
@@ -90,14 +109,14 @@ static int parse_var_like(Parser *p, Statement *stmt, int is_const)
  * @return 1 on success, 0 on failure.
  */
 {
-    /* we implement a function to parse variable-like declarations in 
-       our programming language, which can include both regular variables and constants.
-       this function handles the syntax and semantics of variable declarations, 
-       including optional type annotations and initializers, 
-       while also performing necessary type checks and error reporting.
-       by using a single function for both variables and constants, 
-       we can reduce code duplication and maintain a consistent 
-       approach to parsing these related constructs. */
+    /* we implement a function to parse variable-like declarations in
+     *       our programming language, which can include both regular variables and constants.
+     *       this function handles the syntax and semantics of variable declarations,
+     *       including optional type annotations and initializers,
+     *       while also performing necessary type checks and error reporting.
+     *       by using a single function for both variables and constants,
+     *       we can reduce code duplication and maintain a consistent
+     *       approach to parsing these related constructs. */
     char buf1[128], buf2[128];
     const Token *name = cur(p);
     if (!expect(p, TOKEN_IDENTIFIER, is_const ? "expected constant name after const" : "expected variable name after var"))
@@ -146,13 +165,13 @@ static int parse_var_like(Parser *p, Statement *stmt, int is_const)
      */
     if (!add_local(p, name->lexeme, declared, name->line))
         return 0;
-        /* we implement a function to parse variable-like declarations in our programming language, 
-           which can include both regular variables and constants.
-           this function handles the syntax and semantics of variable declarations, 
-           including optional type annotations and initializers, 
-           while also performing necessary type checks and error reporting.
-           by using a single function for both variables and constants, 
-           we can reduce code duplication and maintain a consistent approach to parsing these related constructs. */
+    /* we implement a function to parse variable-like declarations in our programming language,
+     *           which can include both regular variables and constants.
+     *           this function handles the syntax and semantics of variable declarations,
+     *           including optional type annotations and initializers,
+     *           while also performing necessary type checks and error reporting.
+     *           by using a single function for both variables and constants,
+     *           we can reduce code duplication and maintain a consistent approach to parsing these related constructs. */
     Symbol *sym = find_symbol(p, name->lexeme);
     if (sym)
         sym->is_const = is_const;
@@ -176,15 +195,35 @@ static int parse_var_like(Parser *p, Statement *stmt, int is_const)
     stmt->as.var_stmt.is_const = is_const;
     stmt->as.var_stmt.line = name->line;
     return 1;
-    /* we implement a function to parse variable-like declarations in our programming language, 
-       which can include both regular variables and constants.
-       this function handles the syntax and semantics of variable declarations, 
-       including optional type annotations and initializers, 
-       while also performing necessary type checks and error reporting.
-       by using a single function for both variables and constants, 
-       we can reduce code duplication and maintain a consistent approach to parsing these related constructs. */
+    /* we implement a function to parse variable-like declarations in our programming language,
+     *       which can include both regular variables and constants.
+     *       this function handles the syntax and semantics of variable declarations,
+     *       including optional type annotations and initializers,
+     *       while also performing necessary type checks and error reporting.
+     *       by using a single function for both variables and constants,
+     *       we can reduce code duplication and maintain a consistent approach to parsing these related constructs. */
 }
 
+/*
+ * Function overview: parse_switch
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_stmt.c.
+ * - It exists to parse statements, declarations, control-flow constructs, and higher-level program structure.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "parse switch".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 static int parse_switch(Parser *p, Statement *stmt)
 {
     char buf1[128], buf2[128];
@@ -205,20 +244,20 @@ static int parse_switch(Parser *p, Statement *stmt)
     }
     if (!expect(p, TOKEN_COLON, "expected ':' after switch expression") || !expect(p, TOKEN_NEWLINE, "expected newline after switch header") || !expect(p, TOKEN_INDENT, "expected indented switch block"))
         return 0;
-        /* we implement a function to parse a switch statement in our programming language.
-           this function handles the syntax and semantics of switch statements, 
-           including parsing the switch expression, validating its type, 
-           and processing the case and default labels along with their associated blocks of statements.
-           by centralizing switch statement parsing in this function, 
-           we can ensure consistent handling of this control flow construct and 
-           provide clear error messages when syntax or type issues arise. */
+    /* we implement a function to parse a switch statement in our programming language.
+     *           this function handles the syntax and semantics of switch statements,
+     *           including parsing the switch expression, validating its type,
+     *           and processing the case and default labels along with their associated blocks of statements.
+     *           by centralizing switch statement parsing in this function,
+     *           we can ensure consistent handling of this control flow construct and
+     *           provide clear error messages when syntax or type issues arise. */
 
     SwitchCase temp[256];
     size_t count = 0;
-    /* we use a temporary array to store switch cases as we parse them, 
-    allowing us to handle an arbitrary number of cases without needing to know the count upfront. 
-    Once we've parsed all cases, we can allocate the exact amount of memory needed and copy the cases over, 
-    ensuring efficient memory usage while maintaining flexibility in the number of cases supported. */
+    /* we use a temporary array to store switch cases as we parse them,
+     *    allowing us to handle an arbitrary number of cases without needing to know the count upfront.
+     *    Once we've parsed all cases, we can allocate the exact amount of memory needed and copy the cases over,
+     *    ensuring efficient memory usage while maintaining flexibility in the number of cases supported. */
     memset(temp, 0, sizeof(temp));
     while (cur(p)->type != TOKEN_DEDENT && cur(p)->type != TOKEN_EOF)
     {
@@ -243,12 +282,12 @@ static int parse_switch(Parser *p, Statement *stmt)
                 diagnostics_add(p->src, p->errors, temp[count].line, prev(p)->column, "switch case type mismatch: expected %s, got %s", type_display_name(vt, buf1, sizeof(buf1)), type_display_name(ct, buf2, sizeof(buf2)));
                 return 0;
                 /* we implement a function to parse a case label in a switch statement.
-                   this function is responsible for parsing the case expression, 
-                   validating its type against the switch expression, 
-                   and reporting any type mismatches with clear error messages.
-                   by centralizing case label parsing in this function, 
-                   we can maintain consistent handling of case labels and ensure that 
-                   type errors are caught effectively during the parsing process. */
+                 *                   this function is responsible for parsing the case expression,
+                 *                   validating its type against the switch expression,
+                 *                   and reporting any type mismatches with clear error messages.
+                 *                   by centralizing case label parsing in this function,
+                 *                   we can maintain consistent handling of case labels and ensure that
+                 *                   type errors are caught effectively during the parsing process. */
             }
         }
         else if (match(p, TOKEN_DEFAULT))
@@ -284,16 +323,36 @@ static int parse_switch(Parser *p, Statement *stmt)
     stmt->as.switch_stmt.cases = alloc_switch_cases(p, count);
     memcpy(stmt->as.switch_stmt.cases, temp, count * sizeof(SwitchCase));
     /* we implement a function to parse a switch statement in our programming language.
-       this function handles the syntax and semantics of switch statements, 
-       including parsing the switch expression, validating its type, and processing the 
-       case and default labels along with their associated blocks of statements.
-       by centralizing switch statement parsing in this function, 
-       we can ensure consistent handling of this control flow construct and 
-       provide clear error messages when syntax or type issues arise. */
+     *       this function handles the syntax and semantics of switch statements,
+     *       including parsing the switch expression, validating its type, and processing the
+     *       case and default labels along with their associated blocks of statements.
+     *       by centralizing switch statement parsing in this function,
+     *       we can ensure consistent handling of this control flow construct and
+     *       provide clear error messages when syntax or type issues arise. */
     stmt->as.switch_stmt.line = value->line;
     return 1;
 }
 
+/*
+ * Function overview: parse_statement
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_stmt.c.
+ * - It exists to parse statements, declarations, control-flow constructs, and higher-level program structure.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "parse statement".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 static int parse_statement(Parser *p, Statement *stmt)
 {
     char buf1[128], buf2[128];
@@ -319,11 +378,11 @@ static int parse_statement(Parser *p, Statement *stmt)
         }
         stmt->as.label_stmt.line = name->line;
         /* we implement a function to parse a label statement in our programming language.
-           this function is responsible for parsing the label name, ensuring it follows the correct syntax, 
-           and storing it in the statement structure for later use during code generation or interpretation.
-           by centralizing label parsing in this function, 
-           we can maintain consistent handling of labels and 
-           provide clear error messages when syntax issues arise. */
+         *           this function is responsible for parsing the label name, ensuring it follows the correct syntax,
+         *           and storing it in the statement structure for later use during code generation or interpretation.
+         *           by centralizing label parsing in this function,
+         *           we can maintain consistent handling of labels and
+         *           provide clear error messages when syntax issues arise. */
         return 1;
     }
     if (match(p, TOKEN_GOTO))
@@ -340,11 +399,11 @@ static int parse_statement(Parser *p, Statement *stmt)
         stmt->as.goto_stmt.line = name->line;
         return 1;
         /* we implement a function to parse a goto statement in our programming language.
-           this function is responsible for parsing the target label name, 
-           ensuring it follows the correct syntax, and storing it in the statement 
-           structure for later use during code generation or interpretation.
-           by centralizing goto parsing in this function, we can maintain consistent handling of 
-           goto statements and provide clear error messages when syntax issues arise. */
+         *           this function is responsible for parsing the target label name,
+         *           ensuring it follows the correct syntax, and storing it in the statement
+         *           structure for later use during code generation or interpretation.
+         *           by centralizing goto parsing in this function, we can maintain consistent handling of
+         *           goto statements and provide clear error messages when syntax issues arise. */
     }
     if (match(p, TOKEN_VAR))
         return parse_var_like(p, stmt, 0);
@@ -360,11 +419,11 @@ static int parse_statement(Parser *p, Statement *stmt)
         stmt->as.print_stmt.value = value;
         stmt->as.print_stmt.line = value->line;
         /* we implement a function to parse a print statement in our programming language.
-           this function is responsible for parsing the expression to be printed, 
-           ensuring it follows the correct syntax, and storing it in the statement structure for 
-           later use during code generation or interpretation.
-           by centralizing print parsing in this function, we can maintain consistent handling of 
-           print statements and provide clear error messages when syntax issues arise. */
+         *           this function is responsible for parsing the expression to be printed,
+         *           ensuring it follows the correct syntax, and storing it in the statement structure for
+         *           later use during code generation or interpretation.
+         *           by centralizing print parsing in this function, we can maintain consistent handling of
+         *           print statements and provide clear error messages when syntax issues arise. */
         return 1;
     }
     if (match(p, TOKEN_RET))
@@ -383,12 +442,12 @@ static int parse_statement(Parser *p, Statement *stmt)
         stmt->as.return_stmt.value = value;
         stmt->as.return_stmt.line = prev(p)->line;
         /* we implement a function to parse a return statement in our programming language.
-           this function is responsible for parsing the return value (if any), 
-           ensuring it follows the correct syntax, and storing it in the statement 
-           structure for later use during code generation or interpretation.
-           by centralizing return parsing in this function, we can maintain 
-           consistent handling of return statements and provide clear error 
-           messages when syntax issues arise. */
+         *           this function is responsible for parsing the return value (if any),
+         *           ensuring it follows the correct syntax, and storing it in the statement
+         *           structure for later use during code generation or interpretation.
+         *           by centralizing return parsing in this function, we can maintain
+         *           consistent handling of return statements and provide clear error
+         *           messages when syntax issues arise. */
         return 1;
     }
     if (match(p, TOKEN_IF) || match(p, TOKEN_ELIF))
@@ -412,12 +471,12 @@ static int parse_statement(Parser *p, Statement *stmt)
                 return 0;
             p->index--;
             /* we implement a function to parse an if or elif statement in our programming language.
-               this function is responsible for parsing the condition expression, 
-               ensuring it follows the correct syntax, and then parsing the associated blocks 
-               for the if/elif and any subsequent else or elif clauses.
-               by centralizing if/elif parsing in this function, 
-               we can maintain consistent handling of these control flow 
-               constructs and provide clear error messages when syntax issues arise. */
+             *               this function is responsible for parsing the condition expression,
+             *               ensuring it follows the correct syntax, and then parsing the associated blocks
+             *               for the if/elif and any subsequent else or elif clauses.
+             *               by centralizing if/elif parsing in this function,
+             *               we can maintain consistent handling of these control flow
+             *               constructs and provide clear error messages when syntax issues arise. */
             if (!parse_statement(p, &nested[0]))
                 return 0;
             stmt->as.if_stmt.else_block = nested;
@@ -429,13 +488,13 @@ static int parse_statement(Parser *p, Statement *stmt)
                 return 0;
             if (!parse_block(p, &stmt->as.if_stmt.else_block, &stmt->as.if_stmt.else_count))
                 return 0;
-                /* we implement a function to parse an if or elif statement in our programming language.
-                   this function is responsible for parsing the condition expression, 
-                   ensuring it follows the correct syntax, and then parsing the associated blocks for 
-                   the if/elif and any subsequent else or elif clauses.
-                   by centralizing if/elif parsing in this function, 
-                   we can maintain consistent handling of these control flow constructs and 
-                   provide clear error messages when syntax issues arise. */
+            /* we implement a function to parse an if or elif statement in our programming language.
+             *                   this function is responsible for parsing the condition expression,
+             *                   ensuring it follows the correct syntax, and then parsing the associated blocks for
+             *                   the if/elif and any subsequent else or elif clauses.
+             *                   by centralizing if/elif parsing in this function,
+             *                   we can maintain consistent handling of these control flow constructs and
+             *                   provide clear error messages when syntax issues arise. */
         }
         stmt->kind = STMT_IF;
         stmt->as.if_stmt.condition = cond;
@@ -448,6 +507,25 @@ static int parse_statement(Parser *p, Statement *stmt)
      * @param stmt The statement being parsed.
      * @return 1 if the statement is parsed successfully, 0 otherwise.
      */
+    if (match(p, TOKEN_UNSAFE))
+    {
+        const Token *kw = prev(p);
+        if (!p->allow_unsafe)
+            diagnostics_add(p->src, p->errors, kw->line, kw->column, "unsafe blocks require unsafe.enable or --unsafe");
+        if (!expect(p, TOKEN_COLON, "expected ':' after unsafe") || !expect(p, TOKEN_NEWLINE, "expected newline after unsafe") || !expect(p, TOKEN_INDENT, "expected indented unsafe block"))
+            return 0;
+        ++p->unsafe_depth;
+        if (!parse_block(p, &stmt->as.unsafe_stmt.body, &stmt->as.unsafe_stmt.body_count))
+        {
+            --p->unsafe_depth;
+            return 0;
+        }
+        --p->unsafe_depth;
+        stmt->kind = STMT_UNSAFE;
+        stmt->as.unsafe_stmt.line = kw->line;
+        return 1;
+    }
+
     if (match(p, TOKEN_WHILE))
     {
         Expr *cond = parse_expression(p);
@@ -456,13 +534,13 @@ static int parse_statement(Parser *p, Statement *stmt)
             return 0;
         if (!parse_block(p, &stmt->as.while_stmt.body, &stmt->as.while_stmt.body_count))
             return 0;
-            /* we implement a function to parse a while statement in our programming language.
-               this function is responsible for parsing the loop condition, 
-               ensuring it follows the correct syntax, and then parsing the associated block of 
-               statements that make up the body of the loop.
-               by centralizing while statement parsing in this function, 
-               we can maintain consistent handling of this control flow construct and 
-               provide clear error messages when syntax issues arise. */
+        /* we implement a function to parse a while statement in our programming language.
+         *               this function is responsible for parsing the loop condition,
+         *               ensuring it follows the correct syntax, and then parsing the associated block of
+         *               statements that make up the body of the loop.
+         *               by centralizing while statement parsing in this function,
+         *               we can maintain consistent handling of this control flow construct and
+         *               provide clear error messages when syntax issues arise. */
         stmt->kind = STMT_WHILE;
         stmt->as.while_stmt.condition = cond;
         stmt->as.while_stmt.line = cond->line;
@@ -480,12 +558,12 @@ static int parse_statement(Parser *p, Statement *stmt)
         if (lhs->kind == EXPR_IDENTIFIER)
         {
             /* we implement a function to parse an assignment statement in our programming language.
-               this function is responsible for parsing the left-hand side (LHS) and right-hand side (RHS) expressions, 
-               ensuring that the LHS is a valid assignable expression (like a variable), 
-               and then performing type checks to ensure that the assignment is valid according to the language's type system.
-               by centralizing assignment parsing in this function, 
-               we can maintain consistent handling of assignments and provide clear 
-               error messages when syntax or type issues arise. */
+             *               this function is responsible for parsing the left-hand side (LHS) and right-hand side (RHS) expressions,
+             *               ensuring that the LHS is a valid assignable expression (like a variable),
+             *               and then performing type checks to ensure that the assignment is valid according to the language's type system.
+             *               by centralizing assignment parsing in this function,
+             *               we can maintain consistent handling of assignments and provide clear
+             *               error messages when syntax or type issues arise. */
             Symbol *s = find_symbol(p, lhs->as.text);
             if ((s && s->is_const) || (find_global(p->program, lhs->as.text) && find_global(p->program, lhs->as.text)->is_const))
             {
@@ -511,12 +589,12 @@ static int parse_statement(Parser *p, Statement *stmt)
     stmt->as.expr_stmt.expr = lhs;
     stmt->as.expr_stmt.line = lhs->line;
     /* we implement a function to parse an expression statement in our programming language.
-       this function is responsible for parsing the expression, 
-       ensuring it follows the correct syntax, and then storing it in the statement structure 
-       for later use during code generation or interpretation.
-       by centralizing expression statement parsing in this function, 
-       we can maintain consistent handling of these statements and provide clear error 
-       messages when syntax issues arise. */
+     *       this function is responsible for parsing the expression,
+     *       ensuring it follows the correct syntax, and then storing it in the statement structure
+     *       for later use during code generation or interpretation.
+     *       by centralizing expression statement parsing in this function,
+     *       we can maintain consistent handling of these statements and provide clear error
+     *       messages when syntax issues arise. */
     return 1;
 }
 
@@ -537,12 +615,12 @@ int parse_block(Parser *p, Statement **out, size_t *out_count)
         return 0;
     }
     /* we implement a function to parse a block of statements in our programming language.
-       this function is responsible for parsing a sequence of statements that are indented together, 
-       typically following a control flow statement like if, while, or switch.
-       it uses a temporary array to store the parsed statements and keeps track of the count, 
-       allowing for flexible handling of blocks with varying numbers of statements.
-       by centralizing block parsing in this function, we can maintain consistent handling 
-       of statement blocks and provide clear error messages when syntax issues arise. */
+     *       this function is responsible for parsing a sequence of statements that are indented together,
+     *       typically following a control flow statement like if, while, or switch.
+     *       it uses a temporary array to store the parsed statements and keeps track of the count,
+     *       allowing for flexible handling of blocks with varying numbers of statements.
+     *       by centralizing block parsing in this function, we can maintain consistent handling
+     *       of statement blocks and provide clear error messages when syntax issues arise. */
     while (cur(p)->type != TOKEN_DEDENT && cur(p)->type != TOKEN_EOF)
     {
         while (match(p, TOKEN_NEWLINE))
@@ -586,6 +664,26 @@ static void warn_unused_symbols(Parser *p)
             diagnostics_add(p->src, p->warnings, p->symbols[i].line, 1, "unused variable '%s'", p->symbols[i].name);
 }
 
+/*
+ * Function overview: parse_struct_decl
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_stmt.c.
+ * - It exists to parse statements, declarations, control-flow constructs, and higher-level program structure.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "parse struct decl".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 static int parse_struct_decl(Parser *p)
 {
     const Token *kw = cur(p);
@@ -609,21 +707,21 @@ static int parse_struct_decl(Parser *p)
         diagnostics_add(p->src, p->errors, name->line, name->column, "redefinition of struct '%s'", name->lexeme);
         return 0;
         /* we implement a function to parse a struct declaration in our programming language.
-           this function is responsible for parsing the struct keyword, 
-           the struct name, and the body of the struct which includes its fields.
-           it also performs checks for reserved names and redefinitions to 
-           ensure that the struct declaration is valid within the context of the program.
-           by centralizing struct declaration parsing in this function, 
-           we can maintain consistent handling of structs and provide clear 
-           error messages when syntax or semantic issues arise. */
+         *           this function is responsible for parsing the struct keyword,
+         *           the struct name, and the body of the struct which includes its fields.
+         *           it also performs checks for reserved names and redefinitions to
+         *           ensure that the struct declaration is valid within the context of the program.
+         *           by centralizing struct declaration parsing in this function,
+         *           we can maintain consistent handling of structs and provide clear
+         *           error messages when syntax or semantic issues arise. */
     }
     if (!expect(p, TOKEN_COLON, "expected ':' after struct name") || !expect(p, TOKEN_NEWLINE, "expected newline after struct header") || !expect(p, TOKEN_INDENT, "expected indented struct block"))
         return 0;
     StructDecl *sd = &p->program->structs[p->program->struct_count++];
-    /* we allocate a new struct declaration in the program's struct array, 
-       ensuring that we have space for it and that we track the count of structs declared.
-       this allows us to store the details of the struct, 
-       including its name and fields, for later use during type checking and code generation. */
+    /* we allocate a new struct declaration in the program's struct array,
+     *       ensuring that we have space for it and that we track the count of structs declared.
+     *       this allows us to store the details of the struct,
+     *       including its name and fields, for later use during type checking and code generation. */
     memset(sd, 0, sizeof(*sd));
     sd->line = kw->line;
     if (!copy_cstr(sd->name, sizeof(sd->name), name->lexeme))
@@ -632,13 +730,13 @@ static int parse_struct_decl(Parser *p)
         return 0;
     }
     /* we implement a function to parse a struct declaration in our programming language.
-       this function is responsible for parsing the struct keyword, 
-       the struct name, and the body of the struct which includes its fields.
-       it also performs checks for reserved names and 
-       redefinitions to ensure that the struct declaration is valid within the context of the program.
-       by centralizing struct declaration parsing in this function, 
-       we can maintain consistent handling of structs and 
-       provide clear error messages when syntax or semantic issues arise. */
+     *       this function is responsible for parsing the struct keyword,
+     *       the struct name, and the body of the struct which includes its fields.
+     *       it also performs checks for reserved names and
+     *       redefinitions to ensure that the struct declaration is valid within the context of the program.
+     *       by centralizing struct declaration parsing in this function,
+     *       we can maintain consistent handling of structs and
+     *       provide clear error messages when syntax or semantic issues arise. */
     while (cur(p)->type != TOKEN_DEDENT && cur(p)->type != TOKEN_EOF)
     /**
      * Parses the body of a struct declaration.
@@ -664,11 +762,11 @@ static int parse_struct_decl(Parser *p)
         StructField *fd = &sd->fields[sd->field_count++];
         if (!copy_cstr(fd->name, sizeof(fd->name), fname->lexeme))
         /* we parse the body of a struct declaration, which consists of field declarations.
-           for each field, we parse its name and type, 
-           ensuring that the syntax is correct and that we do not exceed the 
-           maximum number of fields allowed in a struct.
-           we also perform checks for reserved names and provide clear error messages when 
-           issues arise during parsing. */
+         *           for each field, we parse its name and type,
+         *           ensuring that the syntax is correct and that we do not exceed the
+         *           maximum number of fields allowed in a struct.
+         *           we also perform checks for reserved names and provide clear error messages when
+         *           issues arise during parsing. */
         {
             diagnostics_add(p->src, p->errors, fname->line, fname->column, "field name is too long");
             return 0;
@@ -706,12 +804,12 @@ static int add_global(Parser *p, const char *name, TypeRef type, Expr *init, int
         return 0;
     }
     /* we implement a function to add a global variable declaration to the program.
-       this function checks for reserved names and redefinitions to ensure that 
-       the global variable name is valid within the context of the program.
-       it also checks that we do not exceed the 
-       maximum number of global variables allowed in the program.
-       if all checks pass, it allocates a new global variable declaration in the 
-       program's global array and initializes its properties based on the provided parameters. */
+     *       this function checks for reserved names and redefinitions to ensure that
+     *       the global variable name is valid within the context of the program.
+     *       it also checks that we do not exceed the
+     *       maximum number of global variables allowed in the program.
+     *       if all checks pass, it allocates a new global variable declaration in the
+     *       program's global array and initializes its properties based on the provided parameters. */
     if (find_global(p->program, name) || find_function(p->program, name) || find_struct(p->program, name) || find_module(p->program, name))
     {
         diagnostics_add(p->src, p->errors, line, 1, "redefinition of top-level name '%s'", name);
@@ -750,22 +848,22 @@ static int parse_global_var(Parser *p, int is_const)
     const Token *kw = cur(p);
     (void)kw;
     if (!expect(p, is_const ? TOKEN_CONST : TOKEN_VAR, is_const ? "expected 'const'" : "expected 'var'"))
-    /* we implement a function to parse a global variable declaration in our programming language.
-       this function handles the syntax and semantics of global variable declarations, 
-       including optional type annotations and initializers, while also performing necessary type checks and error reporting.
-       by using a single function for both variables and constants, 
-       we can reduce code duplication and maintain a consistent approach to parsing these related constructs. */
+        /* we implement a function to parse a global variable declaration in our programming language.
+         *       this function handles the syntax and semantics of global variable declarations,
+         *       including optional type annotations and initializers, while also performing necessary type checks and error reporting.
+         *       by using a single function for both variables and constants,
+         *       we can reduce code duplication and maintain a consistent approach to parsing these related constructs. */
         return 0;
     const Token *name = cur(p);
     if (!expect(p, TOKEN_IDENTIFIER, is_const ? "expected global constant name after const" : "expected global variable name after var"))
         return 0;
     TypeRef declared = make_type(TYPE_UNKNOWN, NULL);
-    /* we start with an unknown type for the declared type, 
-       which allows us to handle cases where the type is not explicitly specified but can be 
-       inferred from the initializer.
-       this approach provides flexibility in the syntax of global variable declarations while 
-       still ensuring that we can perform necessary type checks and 
-       report errors when the type cannot be determined. */
+    /* we start with an unknown type for the declared type,
+     *       which allows us to handle cases where the type is not explicitly specified but can be
+     *       inferred from the initializer.
+     *       this approach provides flexibility in the syntax of global variable declarations while
+     *       still ensuring that we can perform necessary type checks and
+     *       report errors when the type cannot be determined. */
     int has_initializer = 0;
     Expr *init = NULL;
     if (match(p, TOKEN_COLON) && !parse_type_ref(p, &declared))
@@ -780,11 +878,11 @@ static int parse_global_var(Parser *p, int is_const)
     TypeRef init_type = has_initializer ? infer_expr(p, init) : declared;
     if (declared.kind == TYPE_UNKNOWN)
         declared = init_type;
-        /* if the declared type is still unknown after parsing the initializer, 
-           it means we have no information about the type of the global variable, 
-           which is an error since global variables must have a known type.
-           we report this error to the user, indicating that the 
-           global variable needs a type or an initializer to determine its type. */
+    /* if the declared type is still unknown after parsing the initializer,
+     *           it means we have no information about the type of the global variable,
+     *           which is an error since global variables must have a known type.
+     *           we report this error to the user, indicating that the
+     *           global variable needs a type or an initializer to determine its type. */
     if (declared.kind == TYPE_UNKNOWN)
     {
         diagnostics_add(p->src, p->errors, name->line, name->column, "global variable '%s' needs a type or initializer", name->lexeme);
@@ -817,13 +915,13 @@ static int parse_function(Parser *p)
         if (p->current_module[0])
         {
             diagnostics_add(p->src, p->errors, cur(p)->line, cur(p)->column, "main: cannot appear inside a module");
-            /* we implement a function to parse the main 
-               function declaration in our programming language.
-               this function checks that the main function is not declared inside a module, 
-               as this is not allowed according to the language's rules.
-               if the main function is declared correctly, it initializes its properties, 
-               including setting its name to "main" and its return type to i64, 
-               which is the expected signature for the main function in this language. */
+            /* we implement a function to parse the main
+             *               function declaration in our programming language.
+             *               this function checks that the main function is not declared inside a module,
+             *               as this is not allowed according to the language's rules.
+             *               if the main function is declared correctly, it initializes its properties,
+             *               including setting its name to "main" and its return type to i64,
+             *               which is the expected signature for the main function in this language. */
             return 0;
         }
         f->is_main = true;
@@ -871,13 +969,13 @@ static int parse_function(Parser *p)
         }
         f->line = start->line;
         /* we implement a function to parse a function declaration in our programming language.
-           this function is responsible for parsing the function keyword, 
-           the function name, the parameter list, and the return type, as well as the body of the function.
-           it also performs checks for reserved names and redefinitions to ensure that the 
-           function declaration is valid within the context of the program.
-           by centralizing function declaration parsing in this function, 
-           we can maintain consistent handling of functions and 
-           provide clear error messages when syntax or semantic issues arise. */
+         *           this function is responsible for parsing the function keyword,
+         *           the function name, the parameter list, and the return type, as well as the body of the function.
+         *           it also performs checks for reserved names and redefinitions to ensure that the
+         *           function declaration is valid within the context of the program.
+         *           by centralizing function declaration parsing in this function,
+         *           we can maintain consistent handling of functions and
+         *           provide clear error messages when syntax or semantic issues arise. */
         if (!expect(p, TOKEN_LPAREN, "expected '(' after function name"))
             return 0;
         if (!match(p, TOKEN_RPAREN))
@@ -909,17 +1007,37 @@ static int parse_function(Parser *p)
     for (size_t i = 0; i < f->param_count; ++i)
         add_local(p, f->params[i].name, f->params[i].type, f->line);
     if (!parse_block(p, &f->body, &f->body_count))
-    /* after parsing the function body, we check for any unused local variables and parameters, 
-       and we add warnings for them to help the programmer identify potential issues in their code.
-       this is an important step in the parsing process, 
-       as it helps maintain code quality and encourages good programming practices by 
-       alerting the programmer to variables that are declared but never used. */
+        /* after parsing the function body, we check for any unused local variables and parameters,
+         *       and we add warnings for them to help the programmer identify potential issues in their code.
+         *       this is an important step in the parsing process,
+         *       as it helps maintain code quality and encourages good programming practices by
+         *       alerting the programmer to variables that are declared but never used. */
         return 0;
     warn_unused_symbols(p);
     p->current_function = NULL;
     return 1;
 }
 
+/*
+ * Function overview: parse_module_decl
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_stmt.c.
+ * - It exists to parse statements, declarations, control-flow constructs, and higher-level program structure.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "parse module decl".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 static int parse_module_decl(Parser *p)
 {
     if (!expect(p, TOKEN_MODULE, "expected 'module'"))
@@ -939,13 +1057,13 @@ static int parse_module_decl(Parser *p)
     }
     ModuleDecl *md = &p->program->modules[p->program->module_count++];
     /* we implement a function to parse a module declaration in our programming language.
-       this function is responsible for parsing the module keyword, 
-       the module name, and the body of the module which includes its contents such as functions and variables.
-       it also performs checks for reserved names and redefinitions to 
-       ensure that the module declaration is valid within the context of the program.
-       by centralizing module declaration parsing in this function, 
-       we can maintain consistent handling of modules and 
-       provide clear error messages when syntax or semantic issues arise. */
+     *       this function is responsible for parsing the module keyword,
+     *       the module name, and the body of the module which includes its contents such as functions and variables.
+     *       it also performs checks for reserved names and redefinitions to
+     *       ensure that the module declaration is valid within the context of the program.
+     *       by centralizing module declaration parsing in this function,
+     *       we can maintain consistent handling of modules and
+     *       provide clear error messages when syntax or semantic issues arise. */
     memset(md, 0, sizeof(*md));
     if (!copy_cstr(md->name, sizeof(md->name), name->lexeme))
     {
@@ -976,12 +1094,12 @@ static int parse_module_decl(Parser *p)
             return 0;
     }
     p->current_module[0] = '\0';
-    /* after parsing the module body, we check for any unused symbols within the 
-       module and add warnings for them to help the programmer identify potential issues in their code.
-       this is an important step in the parsing process, 
-       as it helps maintain code quality and encourages good programming practices by 
-       alerting the programmer to variables and functions that are 
-       declared but never used within the module. */
+    /* after parsing the module body, we check for any unused symbols within the
+     *       module and add warnings for them to help the programmer identify potential issues in their code.
+     *       this is an important step in the parsing process,
+     *       as it helps maintain code quality and encourages good programming practices by
+     *       alerting the programmer to variables and functions that are
+     *       declared but never used within the module. */
     if (!expect(p, TOKEN_DEDENT, "expected end of module block"))
         return 0;
     while (match(p, TOKEN_NEWLINE))
@@ -998,15 +1116,37 @@ static int parse_module_decl(Parser *p)
  * @param warnings The list to which parsing warnings will be added.
  * @return 1 if the program is parsed successfully, 0 otherwise.
  */
-bool parse_program(const SourceFile *src, const TokenList *tokens, Program *program, DiagnosticList *errors, DiagnosticList *warnings)
+/*
+ * Function overview: parse_program
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_stmt.c.
+ * - It exists to parse statements, declarations, control-flow constructs, and higher-level program structure.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "parse program".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+bool parse_program(const SourceFile *src, const TokenList *tokens, Program *program, DiagnosticList *errors, DiagnosticList *warnings, int allow_unsafe)
 {
     memset(program, 0, sizeof(*program));
+    program->allow_unsafe = allow_unsafe;
     Parser p = {0};
     p.src = src;
     p.tokens = tokens;
     p.program = program;
     p.errors = errors;
     p.warnings = warnings;
+    p.allow_unsafe = allow_unsafe;
     while (match(&p, TOKEN_NEWLINE))
     {
     }
@@ -1055,10 +1195,10 @@ bool parse_program(const SourceFile *src, const TokenList *tokens, Program *prog
     if (!find_function(program, "main"))
     {
         diagnostics_add(src, errors, 1, 1, "program must define main:");
-        /* after parsing the entire program, we check for the presence of 
-           the main function, which is required as the entry point of the program.
-           if the main function is not defined, we report an error to the user, 
-           indicating that the program must have a main function to be valid. */
+        /* after parsing the entire program, we check for the presence of
+         *           the main function, which is required as the entry point of the program.
+         *           if the main function is not defined, we report an error to the user,
+         *           indicating that the program must have a main function to be valid. */
         return 0;
     }
     for (size_t i = 0; i < program->function_count; ++i)
@@ -1069,11 +1209,11 @@ bool parse_program(const SourceFile *src, const TokenList *tokens, Program *prog
             diagnostics_add(src, warnings, program->functions[i].line ? program->functions[i].line : 1, 1, "unused function '%s'", warn_name);
         }
     }
-    /* after parsing the entire program, we check for any unused functions and global variables, 
-       and we add warnings for them to help the programmer identify potential issues in their code.
-       this is an important step in the parsing process, 
-       as it helps maintain code quality and encourages good programming practices by 
-       alerting the programmer to functions and global variables that are declared but never used. */
+    /* after parsing the entire program, we check for any unused functions and global variables,
+     *       and we add warnings for them to help the programmer identify potential issues in their code.
+     *       this is an important step in the parsing process,
+     *       as it helps maintain code quality and encourages good programming practices by
+     *       alerting the programmer to functions and global variables that are declared but never used. */
     for (size_t i = 0; i < program->global_count; ++i)
     {
         if (!program->globals[i].used)
@@ -1082,6 +1222,26 @@ bool parse_program(const SourceFile *src, const TokenList *tokens, Program *prog
     return errors->count == 0;
 }
 
+/*
+ * Function overview: free_program
+ *
+ * High-level purpose:
+ * - This routine belongs to parser_stmt.c.
+ * - It exists to parse statements, declarations, control-flow constructs, and higher-level program structure.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "free program".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
 void free_program(Program *program)
 {
     for (size_t i = 0; i < program->expr_pool_count; ++i)

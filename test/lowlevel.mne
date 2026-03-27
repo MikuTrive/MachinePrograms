@@ -1,0 +1,12 @@
+bin.runtime
+unsafe.enable
+
+main:
+  unsafe:
+    var mem: ptr = mmap_anon(16)
+    volatile_store_u32(mem, 305419896)
+    print volatile_load_u32(mem)
+    print ptr_to_i64(ptr_offset(mem, 4)) > ptr_to_i64(mem)
+    print asm_rdtsc() > 0
+    print munmap_mem(mem, 16)
+  ret 0

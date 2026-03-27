@@ -1,8 +1,8 @@
 /*
- * Annotated reading copy of runtime.c
+ * Annotated reading copy of runtime_freestanding.c
  *
  * What this file is for:
- * - Provide the hosted Linux runtime implementation used by normal Machine programs.
+ * - Provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  *
  * How to read this file:
  * - First scan the includes to see which data structures and declarations this unit depends on.
@@ -17,35 +17,496 @@
  * - These comments are intended for learning and code-reading, not as a behavioral change.
  */
 
-#include "machine_runtime.h"
-
-#ifndef MAP_ANONYMOUS
-#define MAP_ANONYMOUS MAP_ANON
-#endif
-
-extern long syscall(long number, ...);
+#include "machine_runtime_freestanding.h"
 
 #include "pointer.c"
 
-static struct termios machine_saved_termios;
-int machine_raw_enabled = 0;
-long long machine_last_key = 0;
+#define MACHINE_SYS_READ 0
+#define MACHINE_SYS_WRITE 1
+#define MACHINE_SYS_OPEN 2
+#define MACHINE_SYS_CLOSE 3
+#define MACHINE_SYS_LSEEK 8
+#define MACHINE_SYS_MMAP 9
+#define MACHINE_SYS_MUNMAP 11
+#define MACHINE_SYS_IOCTL 16
+#define MACHINE_SYS_NANOSLEEP 35
+#define MACHINE_SYS_EXIT 60
+#define MACHINE_SYS_CLOCK_GETTIME 228
+
+#define MACHINE_PROT_READ 0x1
+#define MACHINE_PROT_WRITE 0x2
+#define MACHINE_PROT_EXEC 0x4
+#define MACHINE_MAP_PRIVATE 0x02
+#define MACHINE_MAP_ANONYMOUS 0x20
+
+#define MACHINE_O_RDONLY 0
+#define MACHINE_O_WRONLY 1
+#define MACHINE_O_RDWR 2
+#define MACHINE_O_CREAT 0100
+#define MACHINE_O_TRUNC 01000
+
+struct MachineTimespec
+{
+    long tv_sec;
+    long tv_nsec;
+};
+
+typedef struct MachineAllocHeader
+{
+    long long mapped_size;
+} MachineAllocHeader;
+
+static long long machine_last_key = 0;
 static long long machine_mouse_x = 0;
-/* we define the global variables to track the state of the terminal input,
- *   including whether raw mode is enabled, the last key pressed,
- *   and the current mouse position and button state.
- *   these variables are used in the implementation of terminal input handling functions to
- *   provide a consistent interface for reading keyboard and mouse events. */
 static long long machine_mouse_y = 0;
 static long long machine_mouse_button = 0;
-static struct timespec machine_timer_origin = {0, 0};
+static struct MachineTimespec machine_timer_origin = {0, 0};
 
+/*
+ * Function overview: machine_internal_syscall0
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall0".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall0(long long n)
+{
+    long long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n) : "rcx", "r11", "memory");
+    return ret;
+}
+/*
+ * Function overview: machine_internal_syscall1
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall1".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall1(long long n, long long a1)
+{
+    long long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n), "D"(a1) : "rcx", "r11", "memory");
+    return ret;
+}
+/*
+ * Function overview: machine_internal_syscall2
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall2".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall2(long long n, long long a1, long long a2)
+{
+    long long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2) : "rcx", "r11", "memory");
+    return ret;
+}
+/*
+ * Function overview: machine_internal_syscall3
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall3".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall3(long long n, long long a1, long long a2, long long a3)
+{
+    long long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3) : "rcx", "r11", "memory");
+    return ret;
+}
+/*
+ * Function overview: machine_internal_syscall4
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall4".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall4(long long n, long long a1, long long a2, long long a3, long long a4)
+{
+    long long ret;
+    register long long r10 __asm__("r10") = a4;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10) : "rcx", "r11", "memory");
+    return ret;
+}
+/*
+ * Function overview: machine_internal_syscall5
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall5".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall5(long long n, long long a1, long long a2, long long a3, long long a4, long long a5)
+{
+    long long ret;
+    register long long r10 __asm__("r10") = a4;
+    register long long r8 __asm__("r8") = a5;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10), "r"(r8) : "rcx", "r11", "memory");
+    return ret;
+}
+/*
+ * Function overview: machine_internal_syscall6
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine internal syscall6".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_internal_syscall6(long long n, long long a1, long long a2, long long a3, long long a4, long long a5, long long a6)
+{
+    long long ret;
+    register long long r10 __asm__("r10") = a4;
+    register long long r8 __asm__("r8") = a5;
+    register long long r9 __asm__("r9") = a6;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10), "r"(r8), "r"(r9) : "rcx", "r11", "memory");
+    return ret;
+}
+
+/*
+ * Function overview: machine_syscall0
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall0".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall0(long long n) { return machine_internal_syscall0(n); }
+/*
+ * Function overview: machine_syscall1
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall1".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall1(long long n, long long a1) { return machine_internal_syscall1(n, a1); }
+/*
+ * Function overview: machine_syscall2
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall2".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall2(long long n, long long a1, long long a2) { return machine_internal_syscall2(n, a1, a2); }
+/*
+ * Function overview: machine_syscall3
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall3".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall3(long long n, long long a1, long long a2, long long a3) { return machine_internal_syscall3(n, a1, a2, a3); }
+/*
+ * Function overview: machine_syscall4
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall4".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall4(long long n, long long a1, long long a2, long long a3, long long a4) { return machine_internal_syscall4(n, a1, a2, a3, a4); }
+/*
+ * Function overview: machine_syscall5
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall5".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall5(long long n, long long a1, long long a2, long long a3, long long a4, long long a5) { return machine_internal_syscall5(n, a1, a2, a3, a4, a5); }
+/*
+ * Function overview: machine_syscall6
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine syscall6".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+long long machine_syscall6(long long n, long long a1, long long a2, long long a3, long long a4, long long a5, long long a6) { return machine_internal_syscall6(n, a1, a2, a3, a4, a5, a6); }
+
+/*
+ * Function overview: machine_strlen_raw
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine strlen raw".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static long long machine_strlen_raw(const char *s)
+{
+    long long n = 0;
+    if (!s)
+        return 0;
+    while (s[n])
+        ++n;
+    return n;
+}
+static void *machine_memcpy_raw(void *dst, const void *src, long long n)
+{
+    unsigned char *d = (unsigned char *)dst;
+    const unsigned char *s = (const unsigned char *)src;
+    for (long long i = 0; i < n; ++i)
+        d[i] = s[i];
+    return dst;
+}
+static void *machine_memset_raw(void *dst, int value, long long n)
+{
+    unsigned char *d = (unsigned char *)dst;
+    for (long long i = 0; i < n; ++i)
+        d[i] = (unsigned char)value;
+    return dst;
+}
+/*
+ * Function overview: machine_write_all
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine write all".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static void machine_write_all(const char *s, long long n)
+{
+    while (n > 0)
+    {
+        long long wrote = machine_internal_syscall3(MACHINE_SYS_WRITE, 1, (long long)(intptr_t)s, n);
+        if (wrote <= 0)
+            return;
+        s += wrote;
+        n -= wrote;
+    }
+}
+/*
+ * Function overview: machine_exit_now
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine exit now".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+static void machine_exit_now(long long code)
+{
+    machine_internal_syscall1(MACHINE_SYS_EXIT, code);
+    for (;;)
+    {
+    }
+}
 /*
  * Function overview: machine_panic
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine panic".
  *
@@ -60,44 +521,167 @@ static struct timespec machine_timer_origin = {0, 0};
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_panic(const char *msg)
+static void machine_panic(const char *msg)
 {
-    fprintf(stderr, "machine runtime error: %s\n", msg);
-    exit(1);
+    static const char prefix[] = "machine freestanding runtime error: ";
+    machine_write_all(prefix, (long long)(sizeof(prefix) - 1));
+    machine_write_all(msg ? msg : "(null)", machine_strlen_raw(msg ? msg : "(null)"));
+    machine_write_all("\n", 1);
+    machine_exit_now(1);
 }
-/* we implement a set of utility functions for string manipulation,
- *   dynamic memory allocation, list and array management, grid handling,
- *   timing, terminal input/output, and window management.
- *   these functions provide the core functionality needed for the
- *   runtime environment of our programming language,
- *   allowing us to perform common operations such as string duplication,
- *   concatenation, array resizing, grid indexing,
- *   timing measurements, and terminal interactions. */
+
+/*
+ * Function overview: machine_print_str
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine print str".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+void machine_print_str(const char *s)
+{
+    if (!s)
+        s = "";
+    machine_write_all(s, machine_strlen_raw(s));
+    machine_write_all("\n", 1);
+}
+/*
+ * Function overview: machine_print_i64
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine print i64".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+void machine_print_i64(long long value)
+{
+    char buf[64];
+    long long n = value;
+    int neg = 0;
+    int i = 0;
+    if (n == 0)
+    {
+        machine_write_all("0\n", 2);
+        return;
+    }
+    if (n < 0)
+    {
+        neg = 1;
+        n = -n;
+    }
+    while (n > 0 && i < (int)sizeof(buf) - 1)
+    {
+        buf[i++] = (char)('0' + (n % 10));
+        n /= 10;
+    }
+    if (neg)
+        buf[i++] = '-';
+    for (int j = 0; j < i / 2; ++j)
+    {
+        char t = buf[j];
+        buf[j] = buf[i - 1 - j];
+        buf[i - 1 - j] = t;
+    }
+    buf[i++] = '\n';
+    machine_write_all(buf, i);
+}
+/*
+ * Function overview: machine_print_f64
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine print f64".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+void machine_print_f64(double value)
+{
+    (void)value;
+    machine_print_str("[f64 print unsupported in freestanding target]");
+}
+/*
+ * Function overview: machine_print_hp
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine print hp".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+void machine_print_hp(long double value)
+{
+    (void)value;
+    machine_print_str("[hp print unsupported in freestanding target]");
+}
+
 char *machine_strdup(const char *s)
 {
-    size_t n = strlen(s);
-    char *p = (char *)malloc(n + 1);
-    if (!p)
-        machine_panic("out of memory");
-    memcpy(p, s, n + 1);
+    long long n = machine_strlen_raw(s);
+    char *p = (char *)machine_alloc_bytes(n + 1);
+    machine_memcpy_raw(p, s, n + 1);
     return p;
 }
 char *machine_concat(const char *a, const char *b)
 {
-    size_t la = strlen(a), lb = strlen(b);
-    char *p = (char *)malloc(la + lb + 1);
-    if (!p)
-        machine_panic("out of memory");
-    memcpy(p, a, la);
-    memcpy(p + la, b, lb + 1);
+    long long la = machine_strlen_raw(a);
+    long long lb = machine_strlen_raw(b);
+    char *p = (char *)machine_alloc_bytes(la + lb + 1);
+    machine_memcpy_raw(p, a, la);
+    machine_memcpy_raw(p + la, b, lb + 1);
     return p;
 }
 /*
  * Function overview: machine_len
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine len".
  *
@@ -112,25 +696,25 @@ char *machine_concat(const char *a, const char *b)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_len(const char *s) { return (long long)strlen(s); }
+long long machine_len(const char *s) { return machine_strlen_raw(s); }
 char *machine_index_str(const char *s, long long i)
 {
-    static char buf[16][2];
+    static char slots[16][2];
     static int slot = 0;
-    size_t n = strlen(s);
-    if (i < 0 || (size_t)i >= n)
+    long long n = machine_strlen_raw(s);
+    if (i < 0 || i >= n)
         machine_panic("string index out of range");
-    slot = (slot + 1) % 16;
-    buf[slot][0] = s[i];
-    buf[slot][1] = '\0';
-    return buf[slot];
+    slot = (slot + 1) & 15;
+    slots[slot][0] = s[i];
+    slots[slot][1] = '\0';
+    return slots[slot];
 }
 /*
  * Function overview: machine_hp_from_text
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp from text".
  *
@@ -145,13 +729,41 @@ char *machine_index_str(const char *s, long long i)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long double machine_hp_from_text(const char *s) { return strtold(s, NULL); }
+long double machine_hp_from_text(const char *s)
+{
+    long double sign = 1.0L;
+    long double value = 0.0L;
+    long double frac = 0.1L;
+    if (!s)
+        return 0.0L;
+    if (*s == '-')
+    {
+        sign = -1.0L;
+        ++s;
+    }
+    while (*s >= '0' && *s <= '9')
+    {
+        value = value * 10.0L + (long double)(*s - '0');
+        ++s;
+    }
+    if (*s == '.')
+    {
+        ++s;
+        while (*s >= '0' && *s <= '9')
+        {
+            value += (long double)(*s - '0') * frac;
+            frac *= 0.1L;
+            ++s;
+        }
+    }
+    return sign * value;
+}
 /*
  * Function overview: machine_hp_add
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp add".
  *
@@ -171,8 +783,8 @@ long double machine_hp_add(long double a, long double b) { return a + b; }
  * Function overview: machine_hp_sub
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp sub".
  *
@@ -192,8 +804,8 @@ long double machine_hp_sub(long double a, long double b) { return a - b; }
  * Function overview: machine_hp_mul
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp mul".
  *
@@ -213,8 +825,8 @@ long double machine_hp_mul(long double a, long double b) { return a * b; }
  * Function overview: machine_hp_div
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp div".
  *
@@ -229,13 +841,13 @@ long double machine_hp_mul(long double a, long double b) { return a * b; }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long double machine_hp_div(long double a, long double b) { return a / b; }
+long double machine_hp_div(long double a, long double b) { return b == 0.0L ? 0.0L : a / b; }
 /*
  * Function overview: machine_hp_sqrt
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp sqrt".
  *
@@ -250,13 +862,21 @@ long double machine_hp_div(long double a, long double b) { return a / b; }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long double machine_hp_sqrt(long double a) { return sqrtl(a); }
+long double machine_hp_sqrt(long double a)
+{
+    if (a <= 0.0L)
+        return 0.0L;
+    long double x = a > 1.0L ? a : 1.0L;
+    for (int i = 0; i < 32; ++i)
+        x = (x + a / x) * 0.5L;
+    return x;
+}
 /*
  * Function overview: machine_hp_pow
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine hp pow".
  *
@@ -271,29 +891,33 @@ long double machine_hp_sqrt(long double a) { return sqrtl(a); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long double machine_hp_pow(long double a, long double b) { return powl(a, b); }
-/* we also implement a set of functions for high-precision floating-point arithmetic,
- *   which allow us to perform operations such as addition, subtraction, multiplication,
- *   division, square root, and power on long double values.
- *   these functions can be used in our programming language to
- *   support high-precision calculations when needed. */
-void *machine_alloc_bytes(long long n)
+long double machine_hp_pow(long double a, long double b)
 {
-    if (n <= 0)
-        machine_panic("alloc_bytes expects positive size");
-    void *p = calloc(1, (size_t)n);
-    if (!p)
-        machine_panic("allocation failed");
-    return p;
+    long long n = (long long)b;
+    long double r = 1.0L;
+    if ((long double)n != b)
+        return 0.0L;
+    if (n < 0)
+    {
+        if (a == 0.0L)
+            return 0.0L;
+        a = 1.0L / a;
+        n = -n;
+    }
+    while (n-- > 0)
+        r *= a;
+    return r;
 }
+
+void *machine_ptr_from_i64(long long value) { return (void *)(intptr_t)value; }
 /*
- * Function overview: machine_free_mem
+ * Function overview: machine_ptr_to_i64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine free mem".
+ *   "machine ptr to i64".
  *
  * Reading guidance:
  * - Start by identifying the incoming state, context object, or buffers used as inputs.
@@ -306,13 +930,14 @@ void *machine_alloc_bytes(long long n)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_free_mem(void *p) { free(p); }
+long long machine_ptr_to_i64(void *p) { return (long long)(intptr_t)p; }
+void *machine_ptr_offset(void *p, long long offset) { return (void *)((unsigned char *)p + offset); }
 /*
  * Function overview: machine_store_i64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store i64".
  *
@@ -332,8 +957,8 @@ void machine_store_i64(void *p, long long v) { *((long long *)p) = v; }
  * Function overview: machine_load_i64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine load i64".
  *
@@ -353,8 +978,8 @@ long long machine_load_i64(void *p) { return *((long long *)p); }
  * Function overview: machine_store_f64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store f64".
  *
@@ -374,8 +999,8 @@ void machine_store_f64(void *p, double v) { *((double *)p) = v; }
  * Function overview: machine_load_f64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine load f64".
  *
@@ -395,8 +1020,8 @@ double machine_load_f64(void *p) { return *((double *)p); }
  * Function overview: machine_store_str
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store str".
  *
@@ -413,35 +1038,12 @@ double machine_load_f64(void *p) { return *((double *)p); }
  */
 void machine_store_str(void *p, char *v) { *((char **)p) = v; }
 char *machine_load_str(void *p) { return *((char **)p); }
-void *machine_ptr_from_i64(long long value) { return (void *)(intptr_t)value; }
-/*
- * Function overview: machine_ptr_to_i64
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine ptr to i64".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_ptr_to_i64(void *p) { return (long long)(intptr_t)p; }
-void *machine_ptr_offset(void *p, long long offset) { return (void *)((unsigned char *)p + offset); }
 /*
  * Function overview: machine_store_u8
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store u8".
  *
@@ -461,8 +1063,8 @@ void machine_store_u8(void *p, long long v) { *((uint8_t *)p) = (uint8_t)v; }
  * Function overview: machine_store_u16
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store u16".
  *
@@ -482,8 +1084,8 @@ void machine_store_u16(void *p, long long v) { *((uint16_t *)p) = (uint16_t)v; }
  * Function overview: machine_store_u32
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store u32".
  *
@@ -503,8 +1105,8 @@ void machine_store_u32(void *p, long long v) { *((uint32_t *)p) = (uint32_t)v; }
  * Function overview: machine_store_u64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine store u64".
  *
@@ -524,8 +1126,8 @@ void machine_store_u64(void *p, long long v) { *((uint64_t *)p) = (uint64_t)v; }
  * Function overview: machine_load_u8
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine load u8".
  *
@@ -540,13 +1142,13 @@ void machine_store_u64(void *p, long long v) { *((uint64_t *)p) = (uint64_t)v; }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_load_u8(void *p) { return (long long)(*((uint8_t *)p)); }
+long long machine_load_u8(void *p) { return *((uint8_t *)p); }
 /*
  * Function overview: machine_load_u16
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine load u16".
  *
@@ -561,13 +1163,13 @@ long long machine_load_u8(void *p) { return (long long)(*((uint8_t *)p)); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_load_u16(void *p) { return (long long)(*((uint16_t *)p)); }
+long long machine_load_u16(void *p) { return *((uint16_t *)p); }
 /*
  * Function overview: machine_load_u32
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine load u32".
  *
@@ -582,13 +1184,13 @@ long long machine_load_u16(void *p) { return (long long)(*((uint16_t *)p)); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_load_u32(void *p) { return (long long)(*((uint32_t *)p)); }
+long long machine_load_u32(void *p) { return *((uint32_t *)p); }
 /*
  * Function overview: machine_load_u64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine load u64".
  *
@@ -608,8 +1210,8 @@ long long machine_load_u64(void *p) { return (long long)(*((uint64_t *)p)); }
  * Function overview: machine_volatile_store_u8
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile store u8".
  *
@@ -629,8 +1231,8 @@ void machine_volatile_store_u8(void *p, long long v) { *((volatile uint8_t *)p) 
  * Function overview: machine_volatile_store_u16
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile store u16".
  *
@@ -650,8 +1252,8 @@ void machine_volatile_store_u16(void *p, long long v) { *((volatile uint16_t *)p
  * Function overview: machine_volatile_store_u32
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile store u32".
  *
@@ -671,8 +1273,8 @@ void machine_volatile_store_u32(void *p, long long v) { *((volatile uint32_t *)p
  * Function overview: machine_volatile_store_u64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile store u64".
  *
@@ -692,8 +1294,8 @@ void machine_volatile_store_u64(void *p, long long v) { *((volatile uint64_t *)p
  * Function overview: machine_volatile_load_u8
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile load u8".
  *
@@ -708,13 +1310,13 @@ void machine_volatile_store_u64(void *p, long long v) { *((volatile uint64_t *)p
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_volatile_load_u8(void *p) { return (long long)(*((volatile uint8_t *)p)); }
+long long machine_volatile_load_u8(void *p) { return *((volatile uint8_t *)p); }
 /*
  * Function overview: machine_volatile_load_u16
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile load u16".
  *
@@ -729,13 +1331,13 @@ long long machine_volatile_load_u8(void *p) { return (long long)(*((volatile uin
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_volatile_load_u16(void *p) { return (long long)(*((volatile uint16_t *)p)); }
+long long machine_volatile_load_u16(void *p) { return *((volatile uint16_t *)p); }
 /*
  * Function overview: machine_volatile_load_u32
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile load u32".
  *
@@ -750,13 +1352,13 @@ long long machine_volatile_load_u16(void *p) { return (long long)(*((volatile ui
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_volatile_load_u32(void *p) { return (long long)(*((volatile uint32_t *)p)); }
+long long machine_volatile_load_u32(void *p) { return *((volatile uint32_t *)p); }
 /*
  * Function overview: machine_volatile_load_u64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine volatile load u64".
  *
@@ -772,171 +1374,24 @@ long long machine_volatile_load_u32(void *p) { return (long long)(*((volatile ui
  *   later stages, so trace callers before changing behavior.
  */
 long long machine_volatile_load_u64(void *p) { return (long long)(*((volatile uint64_t *)p)); }
-/*
- * Function overview: machine_syscall0
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall0".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall0(long long n) { return (long long)syscall((long)n); }
-/*
- * Function overview: machine_syscall1
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall1".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall1(long long n, long long a1) { return (long long)syscall((long)n, (long)a1); }
-/*
- * Function overview: machine_syscall2
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall2".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall2(long long n, long long a1, long long a2) { return (long long)syscall((long)n, (long)a1, (long)a2); }
-/*
- * Function overview: machine_syscall3
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall3".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall3(long long n, long long a1, long long a2, long long a3) { return (long long)syscall((long)n, (long)a1, (long)a2, (long)a3); }
-/*
- * Function overview: machine_syscall4
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall4".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall4(long long n, long long a1, long long a2, long long a3, long long a4) { return (long long)syscall((long)n, (long)a1, (long)a2, (long)a3, (long)a4); }
-/*
- * Function overview: machine_syscall5
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall5".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall5(long long n, long long a1, long long a2, long long a3, long long a4, long long a5) { return (long long)syscall((long)n, (long)a1, (long)a2, (long)a3, (long)a4, (long)a5); }
-/*
- * Function overview: machine_syscall6
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine syscall6".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_syscall6(long long n, long long a1, long long a2, long long a3, long long a4, long long a5, long long a6) { return (long long)syscall((long)n, (long)a1, (long)a2, (long)a3, (long)a4, (long)a5, (long)a6); }
-static void *machine_mmap_flags(long long size, int prot)
+
+static void *machine_mmap_flags(long long size, long long prot)
 {
-    void *p;
     if (size <= 0)
         return NULL;
-    p = mmap(NULL, (size_t)size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (p == MAP_FAILED)
+    long long result = machine_internal_syscall6(MACHINE_SYS_MMAP, 0, size, prot, MACHINE_MAP_PRIVATE | MACHINE_MAP_ANONYMOUS, -1, 0);
+    if (result < 0)
         return NULL;
-    return p;
+    return (void *)(intptr_t)result;
 }
-void *machine_mmap_anon(long long size) { return machine_mmap_flags(size, PROT_READ | PROT_WRITE); }
-void *machine_mmap_anon_exec(long long size) { return machine_mmap_flags(size, PROT_READ | PROT_WRITE | PROT_EXEC); }
+void *machine_mmap_anon(long long size) { return machine_mmap_flags(size, MACHINE_PROT_READ | MACHINE_PROT_WRITE); }
+void *machine_mmap_anon_exec(long long size) { return machine_mmap_flags(size, MACHINE_PROT_READ | MACHINE_PROT_WRITE | MACHINE_PROT_EXEC); }
 /*
  * Function overview: machine_munmap_mem
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine munmap mem".
  *
@@ -951,13 +1406,51 @@ void *machine_mmap_anon_exec(long long size) { return machine_mmap_flags(size, P
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_munmap_mem(void *p, long long size) { return (long long)munmap(p, (size_t)size); }
+long long machine_munmap_mem(void *p, long long size) { return machine_internal_syscall2(MACHINE_SYS_MUNMAP, (long long)(intptr_t)p, size); }
+
+void *machine_alloc_bytes(long long n)
+{
+    long long total = (long long)sizeof(MachineAllocHeader) + n;
+    MachineAllocHeader *h = (MachineAllocHeader *)machine_mmap_anon(total);
+    if (!h)
+        machine_panic("mmap alloc failed");
+    h->mapped_size = total;
+    return (void *)(h + 1);
+}
+/*
+ * Function overview: machine_free_mem
+ *
+ * High-level purpose:
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
+ * - Within that larger job, this specific function handles the step suggested by its name:
+ *   "machine free mem".
+ *
+ * Reading guidance:
+ * - Start by identifying the incoming state, context object, or buffers used as inputs.
+ * - Then follow how this routine transforms, validates, emits, or forwards that data.
+ * - Finally, look at how results are returned: direct values, mutated structures,
+ *   emitted text, diagnostics, or control-flow side effects.
+ *
+ * Maintenance notes:
+ * - Be careful with ownership, temporary buffers, and error-reporting paths.
+ * - In parser/codegen/runtime files especially, changes here usually affect multiple
+ *   later stages, so trace callers before changing behavior.
+ */
+void machine_free_mem(void *p)
+{
+    if (!p)
+        return;
+    MachineAllocHeader *h = ((MachineAllocHeader *)p) - 1;
+    machine_munmap_mem(h, h->mapped_size);
+}
+
 /*
  * Function overview: machine_fd_open_ro
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd open ro".
  *
@@ -972,13 +1465,13 @@ long long machine_munmap_mem(void *p, long long size) { return (long long)munmap
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_open_ro(const char *path) { return (long long)open(path, O_RDONLY); }
+long long machine_fd_open_ro(const char *path) { return machine_internal_syscall3(MACHINE_SYS_OPEN, (long long)(intptr_t)path, MACHINE_O_RDONLY, 0); }
 /*
  * Function overview: machine_fd_open_wo
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd open wo".
  *
@@ -993,13 +1486,13 @@ long long machine_fd_open_ro(const char *path) { return (long long)open(path, O_
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_open_wo(const char *path) { return (long long)open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644); }
+long long machine_fd_open_wo(const char *path) { return machine_internal_syscall3(MACHINE_SYS_OPEN, (long long)(intptr_t)path, MACHINE_O_WRONLY | MACHINE_O_CREAT | MACHINE_O_TRUNC, 0644); }
 /*
  * Function overview: machine_fd_open_rw
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd open rw".
  *
@@ -1014,13 +1507,13 @@ long long machine_fd_open_wo(const char *path) { return (long long)open(path, O_
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_open_rw(const char *path) { return (long long)open(path, O_RDWR | O_CREAT, 0644); }
+long long machine_fd_open_rw(const char *path) { return machine_internal_syscall3(MACHINE_SYS_OPEN, (long long)(intptr_t)path, MACHINE_O_RDWR | MACHINE_O_CREAT, 0644); }
 /*
  * Function overview: machine_fd_close
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd close".
  *
@@ -1035,13 +1528,13 @@ long long machine_fd_open_rw(const char *path) { return (long long)open(path, O_
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_close(long long fd) { return (long long)close((int)fd); }
+long long machine_fd_close(long long fd) { return machine_internal_syscall1(MACHINE_SYS_CLOSE, fd); }
 /*
  * Function overview: machine_fd_read
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd read".
  *
@@ -1056,13 +1549,13 @@ long long machine_fd_close(long long fd) { return (long long)close((int)fd); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_read(long long fd, void *buf, long long size) { return (long long)read((int)fd, buf, (size_t)size); }
+long long machine_fd_read(long long fd, void *buf, long long size) { return machine_internal_syscall3(MACHINE_SYS_READ, fd, (long long)(intptr_t)buf, size); }
 /*
  * Function overview: machine_fd_write
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd write".
  *
@@ -1077,13 +1570,13 @@ long long machine_fd_read(long long fd, void *buf, long long size) { return (lon
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_write(long long fd, void *buf, long long size) { return (long long)write((int)fd, buf, (size_t)size); }
+long long machine_fd_write(long long fd, void *buf, long long size) { return machine_internal_syscall3(MACHINE_SYS_WRITE, fd, (long long)(intptr_t)buf, size); }
 /*
  * Function overview: machine_fd_seek
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine fd seek".
  *
@@ -1098,13 +1591,13 @@ long long machine_fd_write(long long fd, void *buf, long long size) { return (lo
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_fd_seek(long long fd, long long offset, long long whence) { return (long long)lseek((int)fd, (off_t)offset, (int)whence); }
+long long machine_fd_seek(long long fd, long long offset, long long whence) { return machine_internal_syscall3(MACHINE_SYS_LSEEK, fd, offset, whence); }
 /*
  * Function overview: machine_ioctl_i64
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine ioctl i64".
  *
@@ -1119,13 +1612,14 @@ long long machine_fd_seek(long long fd, long long offset, long long whence) { re
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_ioctl_i64(long long fd, long long request, long long arg) { return (long long)ioctl((int)fd, (unsigned long)request, (unsigned long)arg); }
+long long machine_ioctl_i64(long long fd, long long request, long long arg) { return machine_internal_syscall3(MACHINE_SYS_IOCTL, fd, request, arg); }
+
 /*
  * Function overview: machine_asm_nop
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine asm nop".
  *
@@ -1140,13 +1634,13 @@ long long machine_ioctl_i64(long long fd, long long request, long long arg) { re
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_asm_nop(void) { __asm__ __volatile__("nop"); }
+void machine_asm_nop(void) { __asm__ volatile("nop"); }
 /*
  * Function overview: machine_asm_pause
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine asm pause".
  *
@@ -1161,13 +1655,13 @@ void machine_asm_nop(void) { __asm__ __volatile__("nop"); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_asm_pause(void) { __asm__ __volatile__("pause"); }
+void machine_asm_pause(void) { __asm__ volatile("pause"); }
 /*
  * Function overview: machine_asm_mfence
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine asm mfence".
  *
@@ -1182,13 +1676,13 @@ void machine_asm_pause(void) { __asm__ __volatile__("pause"); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_asm_mfence(void) { __asm__ __volatile__("mfence" ::: "memory"); }
+void machine_asm_mfence(void) { __asm__ volatile("mfence" ::: "memory"); }
 /*
  * Function overview: machine_asm_lfence
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine asm lfence".
  *
@@ -1203,13 +1697,13 @@ void machine_asm_mfence(void) { __asm__ __volatile__("mfence" ::: "memory"); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_asm_lfence(void) { __asm__ __volatile__("lfence" ::: "memory"); }
+void machine_asm_lfence(void) { __asm__ volatile("lfence" ::: "memory"); }
 /*
  * Function overview: machine_asm_sfence
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine asm sfence".
  *
@@ -1224,13 +1718,13 @@ void machine_asm_lfence(void) { __asm__ __volatile__("lfence" ::: "memory"); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_asm_sfence(void) { __asm__ __volatile__("sfence" ::: "memory"); }
+void machine_asm_sfence(void) { __asm__ volatile("sfence" ::: "memory"); }
 /*
  * Function overview: machine_asm_rdtsc
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine asm rdtsc".
  *
@@ -1247,21 +1741,16 @@ void machine_asm_sfence(void) { __asm__ __volatile__("sfence" ::: "memory"); }
  */
 long long machine_asm_rdtsc(void)
 {
-#if defined(__x86_64__) || defined(__i386__)
-    unsigned int lo = 0;
-    unsigned int hi = 0;
-    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-    return (long long)(((unsigned long long)hi << 32) | lo);
-#else
-    return 0;
-#endif
+    unsigned int lo, hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((long long)hi << 32) | (long long)lo;
 }
 /*
  * Function overview: machine_cpu_in8
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine cpu in8".
  *
@@ -1278,21 +1767,16 @@ long long machine_asm_rdtsc(void)
  */
 long long machine_cpu_in8(long long port)
 {
-#if defined(__x86_64__) || defined(__i386__)
-    unsigned char value = 0;
-    __asm__ __volatile__("inb %1, %0" : "=a"(value) : "Nd"((unsigned short)port));
+    unsigned char value;
+    __asm__ volatile("inb %1, %0" : "=a"(value) : "Nd"((unsigned short)port));
     return (long long)value;
-#else
-    (void)port;
-    return -1;
-#endif
 }
 /*
  * Function overview: machine_cpu_out8
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine cpu out8".
  *
@@ -1309,31 +1793,21 @@ long long machine_cpu_in8(long long port)
  */
 void machine_cpu_out8(long long port, long long value)
 {
-#if defined(__x86_64__) || defined(__i386__)
-    __asm__ __volatile__("outb %0, %1" : : "a"((unsigned char)value), "Nd"((unsigned short)port));
-#else
-    (void)port;
-    (void)value;
-#endif
+    __asm__ volatile("outb %0, %1" : : "a"((unsigned char)value), "Nd"((unsigned short)port));
 }
-/* we provide a set of functions for dynamic memory management, including allocating and freeing memory,
- *   as well as storing and loading 64-bit integers,
- *   double-precision floating-point numbers, and strings.
- *   these functions abstract away the details of memory management and
- *   provide a simple interface for our programming language to interact with memory. */
+
 MachineList *machine_list_new(void)
 {
-    MachineList *list = (MachineList *)calloc(1, sizeof(MachineList));
-    if (!list)
-        machine_panic("list_new failed");
+    MachineList *list = (MachineList *)machine_alloc_bytes((long long)sizeof(MachineList));
+    machine_memset_raw(list, 0, (long long)sizeof(MachineList));
     return list;
 }
 /*
  * Function overview: machine_list_push_back
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine list push back".
  *
@@ -1350,25 +1824,25 @@ MachineList *machine_list_new(void)
  */
 void machine_list_push_back(MachineList *list, long long value)
 {
-    MachineListNode *node = (MachineListNode *)calloc(1, sizeof(MachineListNode));
-    if (!node)
-        machine_panic("list push failed");
+    MachineListNode *node;
+    if (!list)
+        machine_panic("list is null");
+    node = (MachineListNode *)machine_alloc_bytes((long long)sizeof(MachineListNode));
     node->value = value;
-    if (!list->head)
-        list->head = list->tail = node;
-    else
-    {
+    node->next = NULL;
+    if (list->tail)
         list->tail->next = node;
-        list->tail = node;
-    }
-    list->size++;
+    else
+        list->head = node;
+    list->tail = node;
+    list->size += 1;
 }
 /*
  * Function overview: machine_list_get
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine list get".
  *
@@ -1385,19 +1859,20 @@ void machine_list_push_back(MachineList *list, long long value)
  */
 long long machine_list_get(MachineList *list, long long index)
 {
+    MachineListNode *node;
     if (!list || index < 0 || index >= list->size)
         machine_panic("list index out of range");
-    MachineListNode *cur = list->head;
-    for (long long i = 0; i < index; ++i)
-        cur = cur->next;
-    return cur->value;
+    node = list->head;
+    while (index-- > 0)
+        node = node->next;
+    return node->value;
 }
 /*
  * Function overview: machine_list_size
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine list size".
  *
@@ -1413,15 +1888,12 @@ long long machine_list_get(MachineList *list, long long index)
  *   later stages, so trace callers before changing behavior.
  */
 long long machine_list_size(MachineList *list) { return list ? list->size : 0; }
-/* we implement a simple linked list data structure with functions to create a new list,
- *   push values to the back of the list, get values by index, and retrieve the size of the list.
- *   this allows us to use linked lists in our programming language for dynamic collections of values. */
 /*
  * Function overview: machine_list_free
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine list free".
  *
@@ -1440,28 +1912,28 @@ void machine_list_free(MachineList *list)
 {
     if (!list)
         return;
-    MachineListNode *cur = list->head;
-    while (cur)
+    MachineListNode *node = list->head;
+    while (node)
     {
-        MachineListNode *next = cur->next;
-        free(cur);
-        cur = next;
+        MachineListNode *next = node->next;
+        machine_free_mem(node);
+        node = next;
     }
-    free(list);
+    machine_free_mem(list);
 }
+
 MachineArray *machine_array_new(void)
 {
-    MachineArray *a = (MachineArray *)calloc(1, sizeof(MachineArray));
-    if (!a)
-        machine_panic("array_new failed");
+    MachineArray *a = (MachineArray *)machine_alloc_bytes((long long)sizeof(MachineArray));
+    machine_memset_raw(a, 0, (long long)sizeof(MachineArray));
     return a;
 }
 /*
  * Function overview: machine_array_reserve
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine array reserve".
  *
@@ -1476,27 +1948,27 @@ MachineArray *machine_array_new(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_array_reserve(MachineArray *a, long long need)
+static void machine_array_reserve(MachineArray *a, long long need)
 {
-    if (!a)
-        machine_panic("array is null");
-    if (a->capacity >= need)
-        return;
     long long cap = a->capacity ? a->capacity : 4;
     while (cap < need)
         cap *= 2;
-    long long *p = (long long *)realloc(a->data, (size_t)cap * sizeof(long long));
-    if (!p)
-        machine_panic("array realloc failed");
-    a->data = p;
+    if (cap == a->capacity)
+        return;
+    long long *new_data = (long long *)machine_alloc_bytes(cap * (long long)sizeof(long long));
+    if (a->data)
+        machine_memcpy_raw(new_data, a->data, a->size * (long long)sizeof(long long));
+    if (a->data)
+        machine_free_mem(a->data);
+    a->data = new_data;
     a->capacity = cap;
 }
 /*
  * Function overview: machine_array_push
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine array push".
  *
@@ -1513,6 +1985,8 @@ void machine_array_reserve(MachineArray *a, long long need)
  */
 void machine_array_push(MachineArray *a, long long value)
 {
+    if (!a)
+        machine_panic("array is null");
     machine_array_reserve(a, a->size + 1);
     a->data[a->size++] = value;
 }
@@ -1520,8 +1994,8 @@ void machine_array_push(MachineArray *a, long long value)
  * Function overview: machine_array_get
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine array get".
  *
@@ -1546,8 +2020,8 @@ long long machine_array_get(MachineArray *a, long long index)
  * Function overview: machine_array_set
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine array set".
  *
@@ -1572,8 +2046,8 @@ void machine_array_set(MachineArray *a, long long index, long long value)
  * Function overview: machine_array_len
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine array len".
  *
@@ -1589,17 +2063,12 @@ void machine_array_set(MachineArray *a, long long index, long long value)
  *   later stages, so trace callers before changing behavior.
  */
 long long machine_array_len(MachineArray *a) { return a ? a->size : 0; }
-/* we implement a dynamic array data structure with functions to create a new array,
- *   reserve capacity, push values to the end of the array, get and set values by index,
- *   and retrieve the length of the array.
- *   this allows us to use dynamic arrays in our programming language for
- *   efficient storage and access of sequential data. */
 /*
  * Function overview: machine_array_free
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine array free".
  *
@@ -1618,29 +2087,29 @@ void machine_array_free(MachineArray *a)
 {
     if (!a)
         return;
-    free(a->data);
-    free(a);
+    if (a->data)
+        machine_free_mem(a->data);
+    machine_free_mem(a);
 }
+
 MachineGrid *machine_grid_new(long long rows, long long cols)
 {
+    MachineGrid *g;
     if (rows <= 0 || cols <= 0)
-        machine_panic("grid_new expects positive rows and cols");
-    MachineGrid *g = (MachineGrid *)calloc(1, sizeof(MachineGrid));
-    if (!g)
-        machine_panic("grid_new failed");
+        machine_panic("grid dimensions must be positive");
+    g = (MachineGrid *)machine_alloc_bytes((long long)sizeof(MachineGrid));
     g->rows = rows;
     g->cols = cols;
-    g->data = (long long *)calloc((size_t)(rows * cols), sizeof(long long));
-    if (!g->data)
-        machine_panic("grid allocation failed");
+    g->data = (long long *)machine_alloc_bytes(rows * cols * (long long)sizeof(long long));
+    machine_memset_raw(g->data, 0, rows * cols * (long long)sizeof(long long));
     return g;
 }
 /*
  * Function overview: machine_grid_index
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid index".
  *
@@ -1655,7 +2124,7 @@ MachineGrid *machine_grid_new(long long rows, long long cols)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_grid_index(MachineGrid *g, long long row, long long col)
+static long long machine_grid_index(MachineGrid *g, long long row, long long col)
 {
     if (!g || row < 0 || col < 0 || row >= g->rows || col >= g->cols)
         machine_panic("grid index out of range");
@@ -1665,8 +2134,8 @@ long long machine_grid_index(MachineGrid *g, long long row, long long col)
  * Function overview: machine_grid_get
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid get".
  *
@@ -1686,8 +2155,8 @@ long long machine_grid_get(MachineGrid *g, long long row, long long col) { retur
  * Function overview: machine_grid_set
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid set".
  *
@@ -1707,8 +2176,8 @@ void machine_grid_set(MachineGrid *g, long long row, long long col, long long va
  * Function overview: machine_grid_rows
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid rows".
  *
@@ -1728,8 +2197,8 @@ long long machine_grid_rows(MachineGrid *g) { return g ? g->rows : 0; }
  * Function overview: machine_grid_cols
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid cols".
  *
@@ -1745,17 +2214,12 @@ long long machine_grid_rows(MachineGrid *g) { return g ? g->rows : 0; }
  *   later stages, so trace callers before changing behavior.
  */
 long long machine_grid_cols(MachineGrid *g) { return g ? g->cols : 0; }
-/* we implement a grid data structure, which is essentially a 2D array,
- *   with functions to create a new grid, calculate the index for a given row and column,
- *   get and set values at specific positions, and retrieve the number of rows and columns.
- *   this allows us to use grids in our programming language for applications that
- *   require two-dimensional data storage and access. */
 /*
  * Function overview: machine_grid_fill
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid fill".
  *
@@ -1772,17 +2236,19 @@ long long machine_grid_cols(MachineGrid *g) { return g ? g->cols : 0; }
  */
 void machine_grid_fill(MachineGrid *g, long long value)
 {
+    long long n;
     if (!g)
         return;
-    for (long long i = 0; i < g->rows * g->cols; ++i)
+    n = g->rows * g->cols;
+    for (long long i = 0; i < n; ++i)
         g->data[i] = value;
 }
 /*
  * Function overview: machine_grid_free
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine grid free".
  *
@@ -1801,43 +2267,16 @@ void machine_grid_free(MachineGrid *g)
 {
     if (!g)
         return;
-    free(g->data);
-    free(g);
+    machine_free_mem(g->data);
+    machine_free_mem(g);
 }
 
-/*
- * Function overview: machine_now_ms
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine now ms".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_now_ms(void)
-{
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-        return 0;
-    return (long long)ts.tv_sec * 1000LL + (long long)ts.tv_nsec / 1000000LL;
-}
 /*
  * Function overview: machine_tick_ms
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine tick ms".
  *
@@ -1852,17 +2291,19 @@ long long machine_now_ms(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_tick_ms(void) { return machine_now_ms(); }
-/* we implement functions to get the current time in milliseconds and
- *   to measure elapsed time since a reference point.
- *   these functions can be used in our programming language for timing operations,
- *   measuring performance, or implementing time-based features. */
+long long machine_tick_ms(void)
+{
+    struct MachineTimespec now;
+    if (machine_internal_syscall2(MACHINE_SYS_CLOCK_GETTIME, 1, (long long)(intptr_t)&now) < 0)
+        return 0;
+    return now.tv_sec * 1000LL + now.tv_nsec / 1000000LL;
+}
 /*
  * Function overview: machine_timer_reset
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine timer reset".
  *
@@ -1877,13 +2318,20 @@ long long machine_tick_ms(void) { return machine_now_ms(); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_timer_reset(void) { clock_gettime(CLOCK_MONOTONIC, &machine_timer_origin); }
+void machine_timer_reset(void)
+{
+    if (machine_internal_syscall2(MACHINE_SYS_CLOCK_GETTIME, 1, (long long)(intptr_t)&machine_timer_origin) < 0)
+    {
+        machine_timer_origin.tv_sec = 0;
+        machine_timer_origin.tv_nsec = 0;
+    }
+}
 /*
  * Function overview: machine_timer_elapsed_ms
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine timer elapsed ms".
  *
@@ -1900,19 +2348,17 @@ void machine_timer_reset(void) { clock_gettime(CLOCK_MONOTONIC, &machine_timer_o
  */
 long long machine_timer_elapsed_ms(void)
 {
-    struct timespec now;
-    if (machine_timer_origin.tv_sec == 0 && machine_timer_origin.tv_nsec == 0)
-        machine_timer_reset();
-    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+    struct MachineTimespec now;
+    if (machine_internal_syscall2(MACHINE_SYS_CLOCK_GETTIME, 1, (long long)(intptr_t)&now) < 0)
         return 0;
-    return (long long)(now.tv_sec - machine_timer_origin.tv_sec) * 1000LL + (long long)(now.tv_nsec - machine_timer_origin.tv_nsec) / 1000000LL;
+    return (now.tv_sec - machine_timer_origin.tv_sec) * 1000LL + (now.tv_nsec - machine_timer_origin.tv_nsec) / 1000000LL;
 }
 /*
  * Function overview: machine_sleep_ms
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine sleep ms".
  *
@@ -1929,48 +2375,20 @@ long long machine_timer_elapsed_ms(void)
  */
 void machine_sleep_ms(long long ms)
 {
+    struct MachineTimespec req;
     if (ms <= 0)
         return;
-    struct timespec req;
-    req.tv_sec = (time_t)(ms / 1000LL);
-    req.tv_nsec = (long)((ms % 1000LL) * 1000000LL);
-    nanosleep(&req, NULL);
+    req.tv_sec = ms / 1000LL;
+    req.tv_nsec = (ms % 1000LL) * 1000000LL;
+    machine_internal_syscall2(MACHINE_SYS_NANOSLEEP, (long long)(intptr_t)&req, 0);
 }
 
-/*
- * Function overview: machine_term_restore
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine term restore".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_term_restore(void)
-{
-    if (machine_raw_enabled)
-    {
-        tcsetattr(STDIN_FILENO, TCSAFLUSH, &machine_saved_termios);
-        machine_raw_enabled = 0;
-    }
-}
 /*
  * Function overview: machine_term_enable_raw
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term enable raw".
  *
@@ -1985,33 +2403,13 @@ void machine_term_restore(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_enable_raw(void)
-{
-    if (machine_raw_enabled)
-        return;
-    if (!isatty(STDIN_FILENO))
-        return;
-    if (tcgetattr(STDIN_FILENO, &machine_saved_termios) != 0)
-        return;
-    struct termios raw = machine_saved_termios;
-    raw.c_iflag &= (tcflag_t) ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    raw.c_oflag &= (tcflag_t) ~(OPOST);
-    raw.c_cflag |= (tcflag_t)(CS8);
-    raw.c_lflag &= (tcflag_t) ~(ECHO | ICANON | IEXTEN | ISIG);
-    raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 0;
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == 0)
-    {
-        machine_raw_enabled = 1;
-        atexit(machine_term_restore);
-    }
-}
+void machine_term_enable_raw(void) {}
 /*
  * Function overview: machine_term_disable_raw
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term disable raw".
  *
@@ -2026,79 +2424,13 @@ void machine_term_enable_raw(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_disable_raw(void) { machine_term_restore(); }
-/* we implement functions to enable and disable raw mode for terminal input,
- *   which allows us to read keyboard input without waiting for a
- *   newline and to handle special keys and mouse events.
- *   these functions use the termios API to configure the terminal settings accordingly. */
-/*
- * Function overview: machine_term_wait_input
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine term wait input".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-int machine_term_wait_input(long timeout_ms)
-{
-    fd_set set;
-    struct timeval tv;
-    FD_ZERO(&set);
-    FD_SET(STDIN_FILENO, &set);
-    if (timeout_ms < 0)
-        return select(STDIN_FILENO + 1, &set, NULL, NULL, NULL);
-    tv.tv_sec = timeout_ms / 1000L;
-    tv.tv_usec = (timeout_ms % 1000L) * 1000L;
-    return select(STDIN_FILENO + 1, &set, NULL, NULL, &tv);
-}
-/*
- * Function overview: machine_term_read_byte_with_timeout
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine term read byte with timeout".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-int machine_term_read_byte_with_timeout(long timeout_ms)
-{
-    unsigned char ch = 0;
-    int ready = machine_term_wait_input(timeout_ms);
-    if (ready <= 0)
-        return -1;
-    if (read(STDIN_FILENO, &ch, 1) != 1)
-        return -1;
-    return (int)ch;
-}
+void machine_term_disable_raw(void) {}
 /*
  * Function overview: machine_term_key_available
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term key available".
  *
@@ -2113,13 +2445,13 @@ int machine_term_read_byte_with_timeout(long timeout_ms)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-int machine_term_key_available(void) { return machine_term_wait_input(0) > 0; }
+int machine_term_key_available(void) { return 0; }
 /*
  * Function overview: machine_term_read_key
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term read key".
  *
@@ -2136,40 +2468,21 @@ int machine_term_key_available(void) { return machine_term_wait_input(0) > 0; }
  */
 long long machine_term_read_key(void)
 {
-    int ch = machine_term_read_byte_with_timeout(-1);
-    if (ch < 0)
-        return -1;
-    if (ch == 27)
+    unsigned char ch = 0;
+    long long r = machine_internal_syscall3(MACHINE_SYS_READ, 0, (long long)(intptr_t)&ch, 1);
+    if (r == 1)
     {
-        int b1 = machine_term_read_byte_with_timeout(5);
-        if (b1 == '[')
-        {
-            int b2 = machine_term_read_byte_with_timeout(5);
-            if (b2 == 'A')
-                return MACHINE_KEY_UP;
-            if (b2 == 'B')
-                return MACHINE_KEY_DOWN;
-            if (b2 == 'C')
-                return MACHINE_KEY_RIGHT;
-            if (b2 == 'D')
-                return MACHINE_KEY_LEFT;
-        }
-        return MACHINE_KEY_ESC;
+        machine_last_key = (long long)ch;
+        return machine_last_key;
     }
-    if (ch == '\r' || ch == '\n')
-        return MACHINE_KEY_ENTER;
-    if (ch == 127)
-        return MACHINE_KEY_BACKSPACE;
-    if (ch == ' ')
-        return MACHINE_KEY_SPACE;
-    return (long long)ch;
+    return -1;
 }
 /*
  * Function overview: machine_term_enable_mouse
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term enable mouse".
  *
@@ -2184,18 +2497,13 @@ long long machine_term_read_key(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_enable_mouse(void)
-{
-    if (isatty(STDOUT_FILENO))
-        fputs("\033[?1000h\033[?1006h", stdout);
-    fflush(stdout);
-}
+void machine_term_enable_mouse(void) {}
 /*
  * Function overview: machine_term_disable_mouse
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term disable mouse".
  *
@@ -2210,22 +2518,13 @@ void machine_term_enable_mouse(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_disable_mouse(void)
-{
-    if (isatty(STDOUT_FILENO))
-        fputs("\033[?1000l\033[?1006l", stdout);
-    fflush(stdout);
-}
-/* we implement functions to read keyboard input with optional timeouts, check if a key is available,
- *   and read special keys such as arrow keys, escape, enter, backspace, and space.
- *   we also implement functions to enable and disable mouse tracking in the terminal,
- *   which allows us to receive mouse events such as movement and button clicks. */
+void machine_term_disable_mouse(void) {}
 /*
  * Function overview: machine_term_last_key
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term last key".
  *
@@ -2245,8 +2544,8 @@ long long machine_term_last_key(void) { return machine_last_key; }
  * Function overview: machine_term_mouse_x
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term mouse x".
  *
@@ -2266,8 +2565,8 @@ long long machine_term_mouse_x(void) { return machine_mouse_x; }
  * Function overview: machine_term_mouse_y
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term mouse y".
  *
@@ -2287,8 +2586,8 @@ long long machine_term_mouse_y(void) { return machine_mouse_y; }
  * Function overview: machine_term_mouse_button
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term mouse button".
  *
@@ -2304,14 +2603,12 @@ long long machine_term_mouse_y(void) { return machine_mouse_y; }
  *   later stages, so trace callers before changing behavior.
  */
 long long machine_term_mouse_button(void) { return machine_mouse_button; }
-/* we provide functions to retrieve the last key pressed and the current mouse position and button state,
- *   which can be used in our programming language to respond to user input. */
 /*
  * Function overview: machine_term_poll_event
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term poll event".
  *
@@ -2326,19 +2623,13 @@ long long machine_term_mouse_button(void) { return machine_mouse_button; }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-long long machine_term_poll_event(void)
-{
-    if (!machine_term_key_available())
-        return MACHINE_EVENT_NONE;
-    machine_last_key = machine_term_read_key();
-    return MACHINE_EVENT_KEY;
-}
+long long machine_term_poll_event(void) { return MACHINE_EVENT_NONE; }
 /*
  * Function overview: machine_term_clear
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term clear".
  *
@@ -2353,13 +2644,13 @@ long long machine_term_poll_event(void)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_clear(void) { fputs("\033[2J\033[H", stdout); }
+void machine_term_clear(void) { machine_write_all("\033[2J\033[H", 7); }
 /*
  * Function overview: machine_term_flush
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term flush".
  *
@@ -2374,13 +2665,13 @@ void machine_term_clear(void) { fputs("\033[2J\033[H", stdout); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_flush(void) { fflush(stdout); }
+void machine_term_flush(void) {}
 /*
  * Function overview: machine_term_move_cursor
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term move cursor".
  *
@@ -2395,13 +2686,17 @@ void machine_term_flush(void) { fflush(stdout); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_move_cursor(long long x, long long y) { printf("\033[%lld;%lldH", y, x); }
+void machine_term_move_cursor(long long x, long long y)
+{
+    (void)x;
+    (void)y;
+}
 /*
  * Function overview: machine_term_hide_cursor
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term hide cursor".
  *
@@ -2416,13 +2711,13 @@ void machine_term_move_cursor(long long x, long long y) { printf("\033[%lld;%lld
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_hide_cursor(void) { fputs("\033[?25l", stdout); }
+void machine_term_hide_cursor(void) {}
 /*
  * Function overview: machine_term_show_cursor
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term show cursor".
  *
@@ -2437,13 +2732,13 @@ void machine_term_hide_cursor(void) { fputs("\033[?25l", stdout); }
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_term_show_cursor(void) { fputs("\033[?25h", stdout); }
+void machine_term_show_cursor(void) {}
 /*
  * Function overview: machine_term_draw_text
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine term draw text".
  *
@@ -2460,716 +2755,17 @@ void machine_term_show_cursor(void) { fputs("\033[?25h", stdout); }
  */
 void machine_term_draw_text(long long x, long long y, const char *text)
 {
-    machine_term_move_cursor(x, y);
-    fputs(text, stdout);
-}
-/* we implement functions to clear the terminal screen, flush output,
- *move the cursor to a specific position, hide and show the cursor, and draw text at a specific location. */
-
-#if defined(__has_include)
-#if __has_include(<SDL2/SDL.h>) && __has_include(<SDL2/SDL_image.h>)
-#define MACHINE_HAS_SDL 1
-#endif
-#endif
-#ifndef MACHINE_HAS_SDL
-#define MACHINE_HAS_SDL 0
-#endif
-
-/* if SDL2 is available, we implement functions for window management, drawing shapes and text, and loading and drawing images using SDL2.
- *   if SDL2 is not available, we provide stub implementations that do nothing or return default values.
- *   this allows our programming language to optionally use SDL2 for graphics if it's available, while still being able to run without it. */
-#if MACHINE_HAS_SDL
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-
-typedef struct MachineImage
-{
-    SDL_Texture *texture;
-    int width;
-    int height;
-} MachineImage;
-static SDL_Window *machine_window = NULL;
-static SDL_Renderer *machine_renderer = NULL;
-int machine_window_open = 0;
-
-/* we define a structure for images that includes an SDL_Texture and its dimensions,
- *   as well as static variables to track the SDL_Window, SDL_Renderer, and whether the window is open.
- *   these are used in the implementation of the window management and
- *   drawing functions that utilize SDL2 for graphics operations. */
-/*
- * Function overview: machine_win_require_renderer
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win require renderer".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_require_renderer(void)
-{
-    if (!machine_renderer)
-        machine_panic("window is not created");
-}
-/*
- * Function overview: machine_win_create
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win create".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-int machine_win_create(const char *title, long long width, long long height)
-{
-    if (machine_window_open)
-        return 1;
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
-        return 0;
-    IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG);
-    machine_window = SDL_CreateWindow(title ? title : "Machine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (int)width, (int)height, SDL_WINDOW_SHOWN);
-    if (!machine_window)
-    {
-        IMG_Quit();
-        SDL_Quit();
-        return 0;
-    }
-    machine_renderer = SDL_CreateRenderer(machine_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!machine_renderer)
-        machine_renderer = SDL_CreateRenderer(machine_window, -1, SDL_RENDERER_SOFTWARE);
-    if (!machine_renderer)
-    {
-        SDL_DestroyWindow(machine_window);
-        machine_window = NULL;
-        IMG_Quit();
-        SDL_Quit();
-        return 0;
-    }
-    machine_window_open = 1;
-    return 1;
-}
-/*
- * Function overview: machine_win_destroy
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win destroy".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_destroy(void)
-{
-    if (machine_renderer)
-        SDL_DestroyRenderer(machine_renderer);
-    if (machine_window)
-        SDL_DestroyWindow(machine_window);
-    machine_renderer = NULL;
-    machine_window = NULL;
-    if (machine_window_open)
-    {
-        IMG_Quit();
-        SDL_Quit();
-    }
-    machine_window_open = 0;
-}
-/*
- * Function overview: machine_win_is_open
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win is open".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-int machine_win_is_open(void) { return machine_window_open; }
-/* we implement functions to create and destroy a window using SDL2,
- *   check if the window is open, and require that a renderer is available for drawing operations.
- *   these functions handle the initialization and cleanup of SDL resources,
- *   as well as providing an interface for managing the window state. */
-/*
- * Function overview: machine_win_last_key
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win last key".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_win_last_key(void) { return machine_last_key; }
-/*
- * Function overview: machine_win_mouse_x
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win mouse x".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_win_mouse_x(void) { return machine_mouse_x; }
-/*
- * Function overview: machine_win_mouse_y
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win mouse y".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_win_mouse_y(void) { return machine_mouse_y; }
-/* we provide functions to retrieve the last key pressed and the current mouse position,
- *   which can be used in our programming language to respond to user input in the context of a graphical window. */
-/*
- * Function overview: machine_win_mouse_button
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win mouse button".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_win_mouse_button(void) { return machine_mouse_button; }
-/*
- * Function overview: machine_win_poll_event
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win poll event".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_win_poll_event(void)
-{
-    SDL_Event e;
-    if (!machine_window_open)
-        return MACHINE_EVENT_NONE;
-    if (!SDL_PollEvent(&e))
-        return MACHINE_EVENT_NONE;
-    if (e.type == SDL_QUIT)
-    {
-        machine_window_open = 0;
-        return MACHINE_EVENT_QUIT;
-    }
-    if (e.type == SDL_KEYDOWN)
-    {
-        machine_last_key = (long long)e.key.keysym.sym;
-        return MACHINE_EVENT_KEY;
-    }
-    if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP || e.type == SDL_MOUSEMOTION)
-    {
-        machine_mouse_x = e.type == SDL_MOUSEMOTION ? e.motion.x : e.button.x;
-        machine_mouse_y = e.type == SDL_MOUSEMOTION ? e.motion.y : e.button.y;
-        machine_mouse_button = e.type == SDL_MOUSEMOTION ? 0 : e.button.button;
-        return MACHINE_EVENT_MOUSE;
-    }
-    return MACHINE_EVENT_NONE;
-}
-/*
- * Function overview: machine_win_set_title
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win set title".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_set_title(const char *title)
-{
-    if (machine_window)
-        SDL_SetWindowTitle(machine_window, title ? title : "Machine");
-}
-/*
- * Function overview: machine_win_clear
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win clear".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_clear(long long r, long long g, long long b)
-{
-    machine_win_require_renderer();
-    SDL_SetRenderDrawColor(machine_renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
-    SDL_RenderClear(machine_renderer);
-}
-/*
- * Function overview: machine_win_present
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win present".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_present(void)
-{
-    machine_win_require_renderer();
-    SDL_RenderPresent(machine_renderer);
-}
-/* we implement functions to poll for events from the SDL event queue, set the window title,
- *   clear the window with a specific color, a
- *   nd present the rendered content to the screen.
- *   these functions allow our programming language to
- *   interact with the graphical window and respond to user input and rendering operations. */
-/*
- * Function overview: machine_win_draw_rect
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win draw rect".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_draw_rect(long long x, long long y, long long w, long long h, long long r, long long g, long long b)
-{
-    SDL_Rect rect;
-    machine_win_require_renderer();
-    rect.x = (int)x;
-    rect.y = (int)y;
-    rect.w = (int)w;
-    rect.h = (int)h;
-    SDL_SetRenderDrawColor(machine_renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
-    SDL_RenderDrawRect(machine_renderer, &rect);
-}
-/*
- * Function overview: machine_win_fill_rect
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win fill rect".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_fill_rect(long long x, long long y, long long w, long long h, long long r, long long g, long long b)
-{
-    SDL_Rect rect;
-    machine_win_require_renderer();
-    rect.x = (int)x;
-    rect.y = (int)y;
-    rect.w = (int)w;
-    rect.h = (int)h;
-    SDL_SetRenderDrawColor(machine_renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
-    SDL_RenderFillRect(machine_renderer, &rect);
-}
-/*
- * Function overview: machine_win_draw_line
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win draw line".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_draw_line(long long x1, long long y1, long long x2, long long y2, long long r, long long g, long long b)
-{
-    machine_win_require_renderer();
-    SDL_SetRenderDrawColor(machine_renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
-    SDL_RenderDrawLine(machine_renderer, (int)x1, (int)y1, (int)x2, (int)y2);
-}
-/*
- * Function overview: machine_win_draw_pixel
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win draw pixel".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_draw_pixel(long long x, long long y, long long r, long long g, long long b)
-{
-    machine_win_require_renderer();
-    SDL_SetRenderDrawColor(machine_renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
-    SDL_RenderDrawPoint(machine_renderer, (int)x, (int)y);
-}
-/*
- * Function overview: machine_win_draw_text
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine win draw text".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_win_draw_text(long long x, long long y, const char *text)
-{
     (void)x;
     (void)y;
-    (void)text;
+    machine_write_all(text ? text : "", machine_strlen_raw(text ? text : ""));
 }
-/* we implement functions to draw rectangles (both outlined and filled), lines, and pixels using SDL2's rendering functions.
- *   the function to draw text is left as a stub, as it
- *   would require additional setup for font rendering with SDL_ttf or a similar library.
- *   these drawing functions allow our programming language to create graphical content in the window. */
-void *machine_image_load(const char *path)
-{
-    MachineImage *img;
-    SDL_Surface *surf;
-    machine_win_require_renderer();
-    surf = IMG_Load(path);
-    if (!surf)
-        surf = SDL_LoadBMP(path);
-    if (!surf)
-        return NULL;
-    img = (MachineImage *)calloc(1, sizeof(MachineImage));
-    if (!img)
-    {
-        SDL_FreeSurface(surf);
-        machine_panic("image allocation failed");
-    }
-    img->width = surf->w;
-    img->height = surf->h;
-    img->texture = SDL_CreateTextureFromSurface(machine_renderer, surf);
-    SDL_FreeSurface(surf);
-    if (!img->texture)
-    {
-        free(img);
-        return NULL;
-    }
-    return img;
-}
-/*
- * Function overview: machine_image_width
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine image width".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_image_width(void *ptr)
-{
-    MachineImage *img = (MachineImage *)ptr;
-    return img ? (long long)img->width : 0;
-}
-/*
- * Function overview: machine_image_height
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine image height".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-long long machine_image_height(void *ptr)
-{
-    MachineImage *img = (MachineImage *)ptr;
-    return img ? (long long)img->height : 0;
-}
-/*
- * Function overview: machine_image_draw
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine image draw".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_image_draw(void *ptr, long long x, long long y)
-{
-    MachineImage *img = (MachineImage *)ptr;
-    SDL_Rect dst;
-    machine_win_require_renderer();
-    if (!img || !img->texture)
-        return;
-    dst.x = (int)x;
-    dst.y = (int)y;
-    dst.w = img->width;
-    dst.h = img->height;
-    SDL_RenderCopy(machine_renderer, img->texture, NULL, &dst);
-}
-/*
- * Function overview: machine_image_draw_scaled
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine image draw scaled".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_image_draw_scaled(void *ptr, long long x, long long y, long long w, long long h)
-{
-    MachineImage *img = (MachineImage *)ptr;
-    SDL_Rect dst;
-    machine_win_require_renderer();
-    if (!img || !img->texture)
-        return;
-    dst.x = (int)x;
-    dst.y = (int)y;
-    dst.w = (int)w;
-    dst.h = (int)h;
-    SDL_RenderCopy(machine_renderer, img->texture, NULL, &dst);
-}
-/*
- * Function overview: machine_image_free
- *
- * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
- * - Within that larger job, this specific function handles the step suggested by its name:
- *   "machine image free".
- *
- * Reading guidance:
- * - Start by identifying the incoming state, context object, or buffers used as inputs.
- * - Then follow how this routine transforms, validates, emits, or forwards that data.
- * - Finally, look at how results are returned: direct values, mutated structures,
- *   emitted text, diagnostics, or control-flow side effects.
- *
- * Maintenance notes:
- * - Be careful with ownership, temporary buffers, and error-reporting paths.
- * - In parser/codegen/runtime files especially, changes here usually affect multiple
- *   later stages, so trace callers before changing behavior.
- */
-void machine_image_free(void *ptr)
-{
-    MachineImage *img = (MachineImage *)ptr;
-    if (!img)
-        return;
-    if (img->texture)
-        SDL_DestroyTexture(img->texture);
-    free(img);
-}
-/* we implement functions to load an image from a file, retrieve its dimensions,
- *   draw it at a specific position, draw it scaled to specific dimensions, and free the image resources.
- *   these functions allow our programming language to work with images in the graphical window using SDL2. */
-
-#else
 
 /*
  * Function overview: machine_win_create
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win create".
  *
@@ -3195,8 +2791,8 @@ int machine_win_create(const char *title, long long width, long long height)
  * Function overview: machine_win_destroy
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win destroy".
  *
@@ -3216,8 +2812,8 @@ void machine_win_destroy(void) {}
  * Function overview: machine_win_is_open
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win is open".
  *
@@ -3233,16 +2829,12 @@ void machine_win_destroy(void) {}
  *   later stages, so trace callers before changing behavior.
  */
 int machine_win_is_open(void) { return 0; }
-/* if SDL2 is not available, we provide stub implementations for all the
- *   window management and drawing functions that simply do nothing or return default values.
- *   this allows our programming language to compile and run without SDL2,
- *   albeit without any graphical capabilities. */
 /*
  * Function overview: machine_win_last_key
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win last key".
  *
@@ -3262,8 +2854,8 @@ long long machine_win_last_key(void) { return 0; }
  * Function overview: machine_win_mouse_x
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win mouse x".
  *
@@ -3283,8 +2875,8 @@ long long machine_win_mouse_x(void) { return 0; }
  * Function overview: machine_win_mouse_y
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win mouse y".
  *
@@ -3304,8 +2896,8 @@ long long machine_win_mouse_y(void) { return 0; }
  * Function overview: machine_win_mouse_button
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win mouse button".
  *
@@ -3325,8 +2917,8 @@ long long machine_win_mouse_button(void) { return 0; }
  * Function overview: machine_win_poll_event
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win poll event".
  *
@@ -3342,15 +2934,12 @@ long long machine_win_mouse_button(void) { return 0; }
  *   later stages, so trace callers before changing behavior.
  */
 long long machine_win_poll_event(void) { return MACHINE_EVENT_NONE; }
-/* we provide stub implementations for the functions to retrieve the last key pressed
- *   and the current mouse position and button state, as well as the function to poll for events,
- *   which all return default values indicating no input or events. */
 /*
  * Function overview: machine_win_set_title
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win set title".
  *
@@ -3370,8 +2959,8 @@ void machine_win_set_title(const char *title) { (void)title; }
  * Function overview: machine_win_clear
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win clear".
  *
@@ -3396,8 +2985,8 @@ void machine_win_clear(long long r, long long g, long long b)
  * Function overview: machine_win_present
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win present".
  *
@@ -3413,13 +3002,12 @@ void machine_win_clear(long long r, long long g, long long b)
  *   later stages, so trace callers before changing behavior.
  */
 void machine_win_present(void) {}
-/* we provide stub implementations for the functions to set the window title, clear the window, and present the rendered content, which do nothing in the absence of SDL2. */
 /*
  * Function overview: machine_win_draw_rect
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win draw rect".
  *
@@ -3448,8 +3036,8 @@ void machine_win_draw_rect(long long x, long long y, long long w, long long h, l
  * Function overview: machine_win_fill_rect
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win fill rect".
  *
@@ -3478,8 +3066,8 @@ void machine_win_fill_rect(long long x, long long y, long long w, long long h, l
  * Function overview: machine_win_draw_line
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win draw line".
  *
@@ -3508,8 +3096,8 @@ void machine_win_draw_line(long long x1, long long y1, long long x2, long long y
  * Function overview: machine_win_draw_pixel
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win draw pixel".
  *
@@ -3536,8 +3124,8 @@ void machine_win_draw_pixel(long long x, long long y, long long r, long long g, 
  * Function overview: machine_win_draw_text
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine win draw text".
  *
@@ -3561,14 +3149,14 @@ void machine_win_draw_text(long long x, long long y, const char *text)
 void *machine_image_load(const char *path)
 {
     (void)path;
-    return NULL;
+    return 0;
 }
 /*
  * Function overview: machine_image_width
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine image width".
  *
@@ -3592,8 +3180,8 @@ long long machine_image_width(void *ptr)
  * Function overview: machine_image_height
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine image height".
  *
@@ -3617,8 +3205,8 @@ long long machine_image_height(void *ptr)
  * Function overview: machine_image_draw
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine image draw".
  *
@@ -3643,8 +3231,8 @@ void machine_image_draw(void *ptr, long long x, long long y)
  * Function overview: machine_image_draw_scaled
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine image draw scaled".
  *
@@ -3671,8 +3259,8 @@ void machine_image_draw_scaled(void *ptr, long long x, long long y, long long w,
  * Function overview: machine_image_free
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine image free".
  *
@@ -3688,16 +3276,12 @@ void machine_image_draw_scaled(void *ptr, long long x, long long y, long long w,
  *   later stages, so trace callers before changing behavior.
  */
 void machine_image_free(void *ptr) { (void)ptr; }
-#endif
-/* we provide stub implementations for all the drawing and image functions that do nothing,
- *   allowing the program to compile and run without SDL2, albeit without any graphical capabilities. */
-
 /*
  * Function overview: machine_video_play
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine video play".
  *
@@ -3714,30 +3298,15 @@ void machine_image_free(void *ptr) { (void)ptr; }
  */
 long long machine_video_play(const char *path)
 {
-    if (!path || access(path, R_OK) != 0)
-        return -1;
-    pid_t pid = fork();
-    if (pid < 0)
-        return -1;
-    if (pid == 0)
-    {
-        int nullfd = open("/dev/null", O_WRONLY);
-        if (nullfd >= 0)
-        {
-            dup2(nullfd, STDERR_FILENO);
-            close(nullfd);
-        }
-        execlp("ffplay", "ffplay", "-autoexit", "-loglevel", "error", path, (char *)NULL);
-        _exit(127);
-    }
-    return (long long)pid;
+    (void)path;
+    return -1;
 }
 /*
  * Function overview: machine_video_is_running
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine video is running".
  *
@@ -3754,22 +3323,15 @@ long long machine_video_play(const char *path)
  */
 int machine_video_is_running(long long pid_value)
 {
-    pid_t pid = (pid_t)pid_value;
-    int status = 0;
-    pid_t r;
-    if (pid <= 0)
-        return 0;
-    r = waitpid(pid, &status, WNOHANG);
-    if (r == 0)
-        return 1;
+    (void)pid_value;
     return 0;
 }
 /*
  * Function overview: machine_video_stop
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine video stop".
  *
@@ -3784,13 +3346,7 @@ int machine_video_is_running(long long pid_value)
  * - In parser/codegen/runtime files especially, changes here usually affect multiple
  *   later stages, so trace callers before changing behavior.
  */
-void machine_video_stop(long long pid_value)
-{
-    pid_t pid = (pid_t)pid_value;
-    if (pid <= 0)
-        return;
-    kill(pid, SIGTERM);
-}
+void machine_video_stop(long long pid_value) { (void)pid_value; }
 
 void *machine_pmm_alloc_page(void) { return machine_alloc_bytes(4096); }
 void *machine_pmm_alloc_pages(long long count)
@@ -3803,8 +3359,8 @@ void *machine_pmm_alloc_pages(long long count)
  * Function overview: machine_pmm_total_bytes
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine pmm total bytes".
  *
@@ -3824,8 +3380,8 @@ long long machine_pmm_total_bytes(void) { return 0; }
  * Function overview: machine_pmm_used_bytes
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine pmm used bytes".
  *
@@ -3845,8 +3401,8 @@ long long machine_pmm_used_bytes(void) { return 0; }
  * Function overview: machine_page_identity_map_2m
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine page identity map m".
  *
@@ -3872,8 +3428,8 @@ long long machine_page_identity_map_2m(long long page_index, long long phys_base
  * Function overview: machine_apic_supported
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine apic supported".
  *
@@ -3893,8 +3449,8 @@ int machine_apic_supported(void) { return 0; }
  * Function overview: machine_apic_enable
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine apic enable".
  *
@@ -3914,8 +3470,8 @@ int machine_apic_enable(void) { return 0; }
  * Function overview: machine_apic_eoi
  *
  * High-level purpose:
- * - This routine belongs to runtime.c.
- * - It exists to provide the hosted linux runtime implementation used by normal machine programs.
+ * - This routine belongs to runtime_freestanding.c.
+ * - It exists to provide the freestanding runtime implementation for syscall-oriented targets without libc startup.
  * - Within that larger job, this specific function handles the step suggested by its name:
  *   "machine apic eoi".
  *

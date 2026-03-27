@@ -1,0 +1,13 @@
+bin.runtime
+unsafe.enable
+
+main:
+  var x: i64 = 123
+  unsafe:
+    print ptr_hex(@x)
+    print ptr_bin(@x)
+    var mem: ptr = alloc_bytes(8)
+    print ptr_hex(mem)
+    print ptr_bin(mem)
+    free_mem(mem)
+  ret 0

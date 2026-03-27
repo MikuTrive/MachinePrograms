@@ -1,0 +1,10 @@
+unsafe.enable
+backend.x86_64-asm
+target.baremetal-x86_64
+
+main:
+  print "Machine baremetal hello"
+  unsafe:
+    var text: ptr = ptr_from_i64(753664)
+    volatile_store_u16(text, 8013)
+  ret 0

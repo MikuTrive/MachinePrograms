@@ -1,5 +1,5 @@
 /*
- * Annotated reading edition of machine_runtime.h
+ * Annotated reading edition of machine_runtime_baremetal.h
  *
  * This file keeps the original code intact and only adds explanatory comments.
  * The goal of this edition is to explain the role of the header, the meaning of its
@@ -11,124 +11,33 @@
  *
  * This prevents duplicate declarations when the same header is included multiple times.
  */
-#ifndef MACHINE_RUNTIME_H
+#ifndef MACHINE_RUNTIME_BAREMETAL_H
 /*
  * Header guard / one-time inclusion control.
  *
  * This prevents duplicate declarations when the same header is included multiple times.
  */
-#define MACHINE_RUNTIME_H
+#define MACHINE_RUNTIME_BAREMETAL_H
 
 /*
  * Header guard / one-time inclusion control.
  *
  * This prevents duplicate declarations when the same header is included multiple times.
  */
-#define MACHINE_RUNTIME_API_VERSION 1010
+#define MACHINE_RUNTIME_API_VERSION 1014
 
 /*
  * Dependency include.
  *
  * This brings in declarations required by the current header.
  */
-#include <stdio.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <stdlib.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <string.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <math.h>
+#include <stddef.h>
 /*
  * Dependency include.
  *
  * This brings in declarations required by the current header.
  */
 #include <stdint.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <time.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <termios.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <unistd.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <sys/select.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <sys/types.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <sys/wait.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <signal.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <errno.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <fcntl.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <sys/ioctl.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <sys/mman.h>
-/*
- * Dependency include.
- *
- * This brings in declarations required by the current header.
- */
-#include <sys/select.h>
-
 
 /*
  * Structure declaration.
@@ -180,34 +89,35 @@ typedef struct MachineGrid
 } MachineGrid;
 
 /*
- * Enumeration declaration.
+ * Function declaration.
  *
- * Enums usually define token kinds, AST node categories, type tags, or other fixed symbolic values.
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
  */
-enum
-{
-    MACHINE_EVENT_NONE = 0,
-    MACHINE_EVENT_KEY = 1,
-    MACHINE_EVENT_MOUSE = 2,
-    MACHINE_EVENT_QUIT = 3
-};
+void machine_baremetal_init(void);
 /*
- * Enumeration declaration.
+ * Function declaration.
  *
- * Enums usually define token kinds, AST node categories, type tags, or other fixed symbolic values.
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
  */
-enum
-{
-    MACHINE_KEY_LEFT = 1000,
-    MACHINE_KEY_RIGHT = 1001,
-    MACHINE_KEY_UP = 1002,
-    MACHINE_KEY_DOWN = 1003,
-    MACHINE_KEY_ESC = 1004,
-    MACHINE_KEY_ENTER = 1005,
-    MACHINE_KEY_BACKSPACE = 1006,
-    MACHINE_KEY_SPACE = 1007
-};
-
+void machine_print_i64(long long value);
+/*
+ * Function declaration.
+ *
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
+ */
+void machine_print_str(const char *s);
+/*
+ * Function declaration.
+ *
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
+ */
+void machine_print_f64(double value);
+/*
+ * Function declaration.
+ *
+ * This prototype describes a service implemented elsewhere and documents how other modules are expected to call it.
+ */
+void machine_print_hp(long double value);
 /*
  * Function declaration.
  *
