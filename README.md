@@ -18,7 +18,7 @@ Machine is a compiled systems language project implemented in C17. The current c
 On Fedora/RHEL/CentOS:
 
 ```bash
-sudo dnf install -y gcc make SDL2-devel SDL2_image-devel
+sudo dnf install -y gcc make SDL2-devel SDL2_image-devel nasm
 ```
 
 On Debian/Ubuntu/Kali：
