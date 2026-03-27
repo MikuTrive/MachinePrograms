@@ -33,8 +33,6 @@ sudo pacman -S gcc make sdl2-compat sdl2_image nasm
 
 对于其他发行版手动编译安装依赖：
 
-对于其他发行版手动编译安装依赖：
-
 [![gcc](https://img.shields.io/badge/source-gcc-blue)](https://gcc.gnu.org/git/gcc.git)
 [![make](https://img.shields.io/badge/source-make-blue)](https://git.savannah.gnu.org/git/make.git/)
 [![SDL2](https://img.shields.io/badge/source-SDL2-blue)](https://github.com/libsdl-org/SDL)
