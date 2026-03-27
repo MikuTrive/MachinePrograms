@@ -334,7 +334,7 @@ long_mode_entry:
     call machine_baremetal_init
 # Transfer control to the Machine program entry point.
     call machine_user_main
-# If the user entry returns, fall into a halt loop instead of continuing into garbage.
+# the If the user entry returns, fall into a halt loop instead of continuing into garbage.
 .hang:
 # Disable interrupts during the critical transition setup.
     cli
@@ -348,7 +348,7 @@ long_mode_entry:
 #
 # Each exported ISR label is a tiny front-end that normalizes the stack layout
 # before jumping to a single common dispatcher. Some x86 exceptions push an
-# error code automatically; others do not, so two macros are used.
+# some x86 exceptions push a hardware error code automatically; others do not, so two macros are used.
 # -----------------------------------------------------------------------------
 
 # Export an interrupt/trap stub symbol so C code can place it into the IDT.
@@ -540,7 +540,7 @@ ISR_NOERR machine_isr_irq1, 33
 # - the CPU has already pushed RIP, CS, RFLAGS, and possibly more state
 #
 # This routine saves general-purpose registers, extracts the vector number and
-# error code into the first two SysV AMD64 argument registers, passes a pointer
+# copy the vector number and hardware error code into the first two SysV AMD64 argument registers, passes a pointer
 # to the saved register frame in RDX, calls the C dispatcher, then restores the
 # machine state and returns with IRETQ.
 # -----------------------------------------------------------------------------
