@@ -70,7 +70,7 @@ The install target now installs:
 
 - the `machine` compiler
 - hosted, freestanding, and baremetal runtime support files
-- Vim syntax files for `.mne` / `.machine`
+- Vim syntax files for `.mne`
 - bundled example `.mne` programs
 - project documentation, including the directive guide
 
