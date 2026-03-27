@@ -70,7 +70,7 @@ sudo make install
 
 - `machine` 编译器
 - hosted、freestanding、baremetal 三套 runtime 支持文件
-- `.mne` / `.machine` 的 Vim 语法高亮文件
+- `.mne` 的 Vim 语法高亮文件
 - 仓库自带的示例 `.mne` 程序
 - 项目文档，包括头部指令说明
 
