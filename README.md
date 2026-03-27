@@ -26,6 +26,11 @@ On Debian/Ubuntu/Kali：
 sudo apt install -y gcc make libsdl2-dev libsdl2-image-dev nasm
 ```
 
+On ArchLinux/Manjaro：
+```bash
+sudo pacman -S gcc make sdl2-compat sdl2_image nasm
+```
+
 Window, image, and related hosted runtime features depend on SDL2 and SDL2_image being available when the hosted runtime object is built.
 
 ### Build the compiler
