@@ -31,6 +31,14 @@ sudo apt install -y gcc make libsdl2-dev libsdl2-image-dev nasm
 sudo pacman -S gcc make sdl2-compat sdl2_image nasm
 ```
 
+对于其他发行版手动编译安装依赖：
+[![gcc](https://img.shields.io/badge/source-gcc-blue)](https://gcc.gnu.org/git/gcc.git)
+[![make](https://img.shields.io/badge/source-gcc-blue)](https://git.savannah.gnu.org/git/make.git/)
+[![SDL2](https://img.shields.io/badge/source-gcc-blue)](https://github.com/libsdl-org/SDL)
+[![SDL2-Image](https://img.shields.io/badge/source-gcc-blue)](https://github.com/libsdl-org/SDL_image)
+[![nasm](https://img.shields.io/badge/source-gcc-blue)](https://github.com/netwide-assembler/nasm)
+
+
 窗口、图像等 hosted runtime 功能依赖 SDL2 和 SDL2_image 在构建 hosted runtime 对象时可用。
 
 ### 构建编译器
