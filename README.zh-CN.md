@@ -26,6 +26,11 @@ sudo dnf install -y gcc make SDL2-devel SDL2_image-devel nasm
 sudo apt install -y gcc make libsdl2-dev libsdl2-image-dev nasm
 ```
 
+在 ArchLinux/Manjaro 上：
+```bash
+sudo pacman -S gcc make sdl2-compat sdl2_image nasm
+```
+
 窗口、图像等 hosted runtime 功能依赖 SDL2 和 SDL2_image 在构建 hosted runtime 对象时可用。
 
 ### 构建编译器
