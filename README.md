@@ -10,6 +10,7 @@ Machine is a compiled systems language project implemented in C17. The current c
 - [Compiler usage](#compiler-usage)
 - [Directive guide](./use_order.md)
 - [Chinese overview](./README.zh-CN.md)
+- [VScode syntaxes](./synates.md)
 
 ## Build and install
 
@@ -197,6 +198,8 @@ After `sudo make install`, these locations are populated:
 This project involved the use of the AI ​​tool ChatGPT 5.4
 MikuTrive assisted in the development of this Machine programming language project.
 
+# Thanks to the contributors
+@ellelkktrraaa
 
 ## License
 
