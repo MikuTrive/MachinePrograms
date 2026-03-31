@@ -10,6 +10,7 @@ Machine is a compiled systems language project implemented in C17. The current c
 - [Compiler usage](#compiler-usage)
 - [Directive guide](./use_order.md)
 - [Chinese overview](./README.zh-CN.md)
+- [VScode syntaxes](./synates.md)
 
 ## Build and install
 
