@@ -1,0 +1,30 @@
+{
+  "name": "machine-lang",
+  "displayName": "MachinePrograms",
+  "description": "syntax highlight for machine lang",
+  "version": "0.0.2",
+  "publisher": "machine-lang",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "machine",
+      "aliases": ["Machine", "machine"],
+      "extensions": [".mne"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "machine",
+      "scopeName": "source.machine",
+      "path": "./syntaxes/machine.tmLanguage.json"
+    }]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/machine-lang-vscode"
+  }
+}

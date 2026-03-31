@@ -1,0 +1,152 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "machine",
+	"patterns": [
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#numbers"
+		},
+		{
+			"include": "#directives"
+		},
+		{
+			"include": "#functions"
+		},
+		{
+			"include": "#moduleNames"
+		},
+		{
+			"include": "#typeNames"
+		},
+		{
+			"include": "#booleans"
+		},
+		{
+			"include": "#types"
+		},
+		{
+			"include": "#builtins"
+		},
+		{
+			"include": "#operators"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#variables"
+		}
+	],
+	"repository": {
+		"comments": {
+			"name": "comment.line.double-dash.machine",
+			"match": "--.*"
+		},
+		"strings": {
+			"name": "string.quoted.double.machine",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.machine",
+					"match": "\\\\."
+				}
+			]
+		},
+		"numbers": {
+			"name": "constant.numeric.machine",
+			"match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+		},
+		"functions": {
+			"patterns": [
+				{
+					"match": "^[ \\t]*(func)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+					"captures": {
+						"1": { "name": "keyword.control.machine" },
+						"2": { "name": "entity.name.function.machine" }
+					}
+				}
+			]
+		},
+		"moduleNames": {
+			"patterns": [
+				{
+					"match": "^[ \\t]*(module)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+					"captures": {
+						"1": { "name": "keyword.control.machine" },
+						"2": { "name": "entity.name.module.machine" }
+					}
+				}
+			]
+		},
+		"typeNames": {
+			"patterns": [
+				{
+					"match": "^[ \\t]*(struct)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+					"captures": {
+						"1": { "name": "keyword.control.machine" },
+						"2": { "name": "entity.name.type.machine" }
+					}
+				}
+			]
+		},
+		"variables": {
+			"name": "variable.other.machine",
+			"match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+		},
+		"booleans": {
+			"name": "constant.language.boolean.machine",
+			"match": "\\b(true|false)\\b"
+		},
+		"types": {
+			"name": "storage.type.machine",
+			"match": "\\b(i64|f64|hp|str|ptr|list|array|bool|void)\\b"
+		},
+		"builtins": {
+			"name": "support.function.machine",
+			"match": "\\b(len|hp|sqrt|sin|cos|pow|hp_add|hp_sub|hp_mul|hp_div|hp_sqrt|hp_pow|alloc_bytes|free_mem|store_i64|load_i64|store_f64|load_f64|store_str|load_str|ptr_from_i64|ptr_to_i64|ptr_offset|store_u8|store_u16|store_u32|store_u64|load_u8|load_u16|load_u32|load_u64|volatile_store_u8|volatile_store_u16|volatile_store_u32|volatile_store_u64|volatile_load_u8|volatile_load_u16|volatile_load_u32|volatile_load_u64|syscall0|syscall1|syscall2|syscall3|syscall4|syscall5|syscall6|mmap_anon|mmap_anon_exec|munmap_mem|fd_open_ro|fd_open_wo|fd_open_rw|fd_close|fd_read|fd_write|fd_seek|ioctl_i64|asm_nop|asm_pause|asm_mfence|asm_lfence|asm_sfence|asm_rdtsc|cpu_in8|cpu_out8|pmm_alloc_page|pmm_alloc_pages|pmm_total_bytes|pmm_used_bytes|page_identity_map_2m|apic_supported|apic_enable|apic_eoi|list_new|list_push_back|list_get|list_size|list_free|array_new|array_push|array_get|array_set|array_len|array_free|grid_new|grid_get|grid_set|grid_rows|grid_cols|grid_fill|grid_free|term_enable_raw|term_disable_raw|term_key_available|term_read_key|term_enable_mouse|term_disable_mouse|term_poll_event|term_last_key|term_mouse_x|term_mouse_y|term_mouse_button|term_clear|term_flush|term_move_cursor|term_hide_cursor|term_show_cursor|term_draw_text|sleep_ms|tick_ms|timer_reset|timer_elapsed_ms|win_create|win_destroy|win_is_open|win_poll_event|win_last_key|win_mouse_x|win_mouse_y|win_mouse_button|win_clear|win_present|win_set_title|win_draw_rect|win_fill_rect|win_draw_line|win_draw_pixel|win_draw_text|image_load|image_draw|image_draw_scaled|image_width|image_height|image_free|video_play|video_stop|video_is_running|addr|index)\\b"
+		},
+		"operators": {
+			"patterns": [
+				{
+					"name": "keyword.operator.comparison.machine",
+					"match": "(==|!=|<=|>=|&&|\\|\\|)"
+				},
+				{
+					"name": "keyword.operator.machine",
+					"match": "([-+*/%=<>@^.:,\\[\\]()])"
+				}
+			]
+		},
+		"keywords": {
+			"name": "keyword.control.machine",
+			"match": "\\b(main|func|struct|var|const|if|else|elif|while|print|ret|goto|label|switch|case|default|module|unsafe|bin|backend)\\b"
+		},
+		"directives": {
+			"patterns": [
+				{
+					"name": "keyword.directive.machine",
+					"match": "^\\s*bin\\.runtime\\b"
+				},
+				{
+					"name": "keyword.directive.machine",
+					"match": "^\\s*unsafe\\.enable\\b"
+				},
+				{
+					"name": "keyword.directive.machine",
+					"match": "^\\s*target\\.[A-Za-z0-9_-]+\\b"
+				},
+				{
+					"name": "keyword.directive.machine",
+					"match": "^\\s*backend\\.[A-Za-z0-9_-]+\\b"
+				}
+			]
+		}
+	},
+	"scopeName": "source.machine"
+}
