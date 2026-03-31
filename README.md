@@ -198,6 +198,8 @@ After `sudo make install`, these locations are populated:
 This project involved the use of the AI ​​tool ChatGPT 5.4
 MikuTrive assisted in the development of this Machine programming language project.
 
+# Thanks to the contributors
+@ellelkktrraaa
 
 ## License
 
